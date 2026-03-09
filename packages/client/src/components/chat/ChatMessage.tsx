@@ -641,6 +641,7 @@ export const ChatMessage = memo(function ChatMessage({
                 isGrouped && (isUser ? "rounded-tr-2xl" : "rounded-tl-2xl"),
                 isStreaming && "rpg-streaming",
                 isConversationStart && "ring-amber-400/30",
+                editing && "w-full",
               )}
               style={{
                 fontSize: chatFontSize,
