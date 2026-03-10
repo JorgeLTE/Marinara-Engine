@@ -1427,6 +1427,43 @@ const WIDGET =
 const WIDGET_EDIT =
   "flex w-20 h-[3.75rem] max-md:w-9 max-md:h-7 flex-col items-center justify-center gap-0.5 max-md:gap-0 rounded-xl max-md:rounded-lg border bg-black/60 backdrop-blur-md overflow-hidden";
 
+/** Truncated label that shows full text on hover (desktop) or tap (mobile) */
+function WidgetLabel({ value, fallback, className }: { value: string; fallback: string; className?: string }) {
+  const [showTip, setShowTip] = useState(false);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+
+  const handleTouchStart = () => {
+    timerRef.current = setTimeout(() => setShowTip(true), 400);
+  };
+  const handleTouchEnd = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+    if (showTip) setTimeout(() => setShowTip(false), 1500);
+  };
+
+  return (
+    <span
+      className={cn("relative", className)}
+      onTouchStart={handleTouchStart}
+      onTouchEnd={handleTouchEnd}
+      onTouchCancel={handleTouchEnd}
+    >
+      <span
+        className={cn(
+          "block max-w-[4.5rem] max-md:max-w-[2.5rem] truncate text-[9px] max-md:text-[7px] font-semibold leading-tight",
+          !value && "italic opacity-40",
+        )}
+      >
+        {value || fallback}
+      </span>
+      {showTip && value && (
+        <span className="absolute bottom-full left-1/2 -translate-x-1/2 mb-1 whitespace-nowrap rounded bg-black/90 border border-white/10 px-1.5 py-0.5 text-[9px] text-white/80 z-[9999] pointer-events-none animate-message-in">
+          {value}
+        </span>
+      )}
+    </span>
+  );
+}
+
 function WidgetInput({
   value,
   onSave,
@@ -1484,7 +1521,7 @@ function LocationWidget({ value, onSave }: { value: string; onSave: (v: string) 
     <button
       onClick={() => setEditing(true)}
       className={cn(WIDGET, "border-emerald-500/20 text-emerald-300")}
-      title="Click to edit location"
+      title={value || "Click to edit location"}
     >
       <div className="relative flex h-7 max-md:h-4 w-14 max-md:w-8 items-center justify-center shrink-0">
         <div className="absolute inset-0 rounded-md overflow-hidden opacity-40">
@@ -1551,14 +1588,7 @@ function LocationWidget({ value, onSave }: { value: string; onSave: (v: string) 
           className="relative text-emerald-400 drop-shadow-[0_0_4px_rgba(52,211,153,0.5)] max-md:h-3 max-md:w-3"
         />
       </div>
-      <span
-        className={cn(
-          "max-w-[4.5rem] max-md:max-w-[2rem] truncate text-[9px] max-md:text-[7px] font-semibold leading-tight shrink-0",
-          !value && "italic opacity-40",
-        )}
-      >
-        {value || "Location"}
-      </span>
+      <WidgetLabel value={value} fallback="Location" />
     </button>
   );
 }
@@ -1582,7 +1612,7 @@ function CalendarWidget({ value, onSave }: { value: string; onSave: (v: string) 
     <button
       onClick={() => setEditing(true)}
       className={cn(WIDGET, "border-violet-500/20 text-violet-300")}
-      title="Click to edit date"
+      title={value || "Click to edit date"}
     >
       <div className="flex h-7 max-md:h-4 w-8 max-md:w-5 flex-col rounded-sm border border-violet-400/30 overflow-hidden bg-violet-950/30 shrink-0">
         <div className="flex h-2.5 max-md:h-1.5 items-center justify-center bg-violet-500/25">
@@ -1594,14 +1624,7 @@ function CalendarWidget({ value, onSave }: { value: string; onSave: (v: string) 
           <span className="text-[12px] max-md:text-[8px] font-bold leading-none text-violet-200/80">{day || "?"}</span>
         </div>
       </div>
-      <span
-        className={cn(
-          "max-w-[4.5rem] max-md:max-w-[2rem] truncate text-[9px] max-md:text-[7px] font-semibold leading-tight shrink-0",
-          !value && "italic opacity-40",
-        )}
-      >
-        {value || "Date"}
-      </span>
+      <WidgetLabel value={value} fallback="Date" />
     </button>
   );
 }
@@ -1629,7 +1652,7 @@ function ClockWidget({ value, onSave }: { value: string; onSave: (v: string) => 
     <button
       onClick={() => setEditing(true)}
       className={cn(WIDGET, "border-amber-500/20 text-amber-300")}
-      title="Click to edit time"
+      title={value || "Click to edit time"}
     >
       <div className="relative flex h-7 max-md:h-4 w-7 max-md:w-4 items-center justify-center shrink-0">
         <svg viewBox="0 0 32 32" className="h-full w-full">
@@ -1685,14 +1708,7 @@ function ClockWidget({ value, onSave }: { value: string; onSave: (v: string) => 
           <circle cx="16" cy="16" r="1" fill="currentColor" className="text-amber-400/70" />
         </svg>
       </div>
-      <span
-        className={cn(
-          "max-w-[4.5rem] max-md:max-w-[2rem] truncate text-[9px] max-md:text-[7px] font-semibold leading-tight shrink-0",
-          !value && "italic opacity-40",
-        )}
-      >
-        {value || period || "Time"}
-      </span>
+      <WidgetLabel value={value || period || ""} fallback="Time" />
     </button>
   );
 }
@@ -1716,19 +1732,12 @@ function WeatherWidget({ value, onSave }: { value: string; onSave: (v: string) =
     <button
       onClick={() => setEditing(true)}
       className={cn(WIDGET, "border-sky-500/20 text-sky-300")}
-      title="Click to edit weather"
+      title={value || "Click to edit weather"}
     >
       <div className="flex h-7 max-md:h-4 items-center justify-center shrink-0">
         <span className="text-xl max-md:text-xs leading-none drop-shadow-[0_0_6px_rgba(56,189,248,0.3)]">{emoji}</span>
       </div>
-      <span
-        className={cn(
-          "max-w-[4.5rem] max-md:max-w-[2rem] truncate text-[9px] max-md:text-[7px] font-semibold leading-tight shrink-0",
-          !value && "italic opacity-40",
-        )}
-      >
-        {value || "Weather"}
-      </span>
+      <WidgetLabel value={value} fallback="Weather" />
     </button>
   );
 }
@@ -1763,7 +1772,7 @@ function TemperatureWidget({ value, onSave }: { value: string; onSave: (v: strin
     <button
       onClick={() => setEditing(true)}
       className={cn(WIDGET, "border-rose-500/20 text-rose-300")}
-      title="Click to edit temperature"
+      title={value || "Click to edit temperature"}
     >
       <div className="relative flex h-7 max-md:h-4 items-center justify-center shrink-0">
         <svg viewBox="0 0 16 32" className="h-full" style={{ width: "auto" }}>
@@ -1811,14 +1820,7 @@ function TemperatureWidget({ value, onSave }: { value: string; onSave: (v: strin
           ))}
         </svg>
       </div>
-      <span
-        className={cn(
-          "max-w-[4.5rem] max-md:max-w-[2rem] truncate text-[9px] max-md:text-[7px] font-semibold leading-tight shrink-0",
-          !value && "italic opacity-40",
-        )}
-      >
-        {value || "Temp"}
-      </span>
+      <WidgetLabel value={value} fallback="Temp" />
     </button>
   );
 }
