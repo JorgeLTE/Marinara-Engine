@@ -47,6 +47,7 @@ import {
   HelpCircle,
   RefreshCw,
   Sparkles,
+  MoreHorizontal,
 } from "lucide-react";
 import { useUIStore } from "../../stores/ui.store";
 import { useAgentStore } from "../../stores/agent.store";
@@ -623,7 +624,7 @@ export function ChatArea() {
           <div className="flex flex-1 overflow-hidden">
             {/* Combined toolbar + HUD — vertical sidebar on left */}
             {hudPosition === "left" && chat && chatMeta.enableAgents && (
-              <div className="relative z-40 flex flex-col items-center gap-1.5 overflow-y-auto border-r border-white/5 bg-black/30 px-1.5 py-2 backdrop-blur-md">
+              <div className="relative z-40 flex flex-col items-center gap-1.5 overflow-y-auto border-r border-white/5 bg-black/30 px-1.5 py-2 backdrop-blur-md max-md:hidden">
                 <div className="flex flex-col items-center gap-1">
                   <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
                   <button
@@ -672,77 +673,126 @@ export function ChatArea() {
                     </div>
                   )}
                   <div className="flex shrink-0 items-center gap-1 ml-2">
-                    <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
-                    <button
-                      onClick={() => setFilesOpen(true)}
-                      className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                      title="Manage Chat Files"
-                    >
-                      <FolderOpen size={16} />
-                    </button>
-                    {expressionAgentEnabled && chatCharIds.length > 0 && (
+                    <ToolbarMenu>
+                      <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
                       <button
-                        onClick={handleToggleSpritePosition}
+                        onClick={() => setFilesOpen(true)}
                         className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                        title={`Sprite: ${spritePosition} side (click to flip)`}
+                        title="Manage Chat Files"
                       >
-                        <FlipHorizontal2 size={16} />
+                        <FolderOpen size={16} />
                       </button>
-                    )}
-                    <button
-                      onClick={() => setGalleryOpen(true)}
-                      className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                      title="Gallery"
-                    >
-                      <Image size={16} />
-                    </button>
-                    <button
-                      onClick={() => setSettingsOpen(true)}
-                      className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                      title="Chat Settings"
-                    >
-                      <Settings2 size={16} />
-                    </button>
+                      {expressionAgentEnabled && chatCharIds.length > 0 && (
+                        <button
+                          onClick={handleToggleSpritePosition}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title={`Sprite: ${spritePosition} side (click to flip)`}
+                        >
+                          <FlipHorizontal2 size={16} />
+                        </button>
+                      )}
+                      <button
+                        onClick={() => setGalleryOpen(true)}
+                        className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                        title="Gallery"
+                      >
+                        <Image size={16} />
+                      </button>
+                      <button
+                        onClick={() => setSettingsOpen(true)}
+                        className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                        title="Chat Settings"
+                      >
+                        <Settings2 size={16} />
+                      </button>
+                    </ToolbarMenu>
                   </div>
                 </div>
-              ) : !chatMeta.enableAgents ? (
-                /* Fallback toolbar when agents disabled in left/right mode */
-                <div className="relative z-40 flex items-center justify-end border-b border-white/5 bg-black/30 px-4 py-2 backdrop-blur-md">
-                  <div className="flex items-center gap-1">
-                    <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
-                    <button
-                      onClick={() => setFilesOpen(true)}
-                      className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                      title="Manage Chat Files"
-                    >
-                      <FolderOpen size={16} />
-                    </button>
-                    {expressionAgentEnabled && chatCharIds.length > 0 && (
-                      <button
-                        onClick={handleToggleSpritePosition}
-                        className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                        title={`Sprite: ${spritePosition} side (click to flip)`}
-                      >
-                        <FlipHorizontal2 size={16} />
-                      </button>
+              ) : (
+                <>
+                  {/* Mobile fallback — top bar for left/right modes */}
+                  <div className="relative z-40 flex items-center border-b border-white/5 bg-black/30 px-4 py-2 backdrop-blur-md md:hidden">
+                    {chat && chatMeta.enableAgents && (
+                      <div className="flex-1 overflow-x-auto">
+                        <RoleplayHUD chatId={chat.id} characterCount={chatCharIds.length} layout="top" />
+                      </div>
                     )}
-                    <button
-                      onClick={() => setGalleryOpen(true)}
-                      className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                      title="Gallery"
-                    >
-                      <Image size={16} />
-                    </button>
-                    <button
-                      onClick={() => setSettingsOpen(true)}
-                      className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
-                      title="Chat Settings"
-                    >
-                      <Settings2 size={16} />
-                    </button>
+                    <div className="flex shrink-0 items-center gap-1 ml-2">
+                      <ToolbarMenu>
+                        <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
+                        <button
+                          onClick={() => setFilesOpen(true)}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title="Manage Chat Files"
+                        >
+                          <FolderOpen size={16} />
+                        </button>
+                        {expressionAgentEnabled && chatCharIds.length > 0 && (
+                          <button
+                            onClick={handleToggleSpritePosition}
+                            className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                            title={`Sprite: ${spritePosition} side (click to flip)`}
+                          >
+                            <FlipHorizontal2 size={16} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setGalleryOpen(true)}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title="Gallery"
+                        >
+                          <Image size={16} />
+                        </button>
+                        <button
+                          onClick={() => setSettingsOpen(true)}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title="Chat Settings"
+                        >
+                          <Settings2 size={16} />
+                        </button>
+                      </ToolbarMenu>
+                    </div>
                   </div>
-                </div>
-              ) : null}
+                  {/* Desktop fallback toolbar when agents disabled in left/right mode */}
+                  {!chatMeta.enableAgents && (
+                    <div className="relative z-40 hidden items-center justify-end border-b border-white/5 bg-black/30 px-4 py-2 backdrop-blur-md md:flex">
+                      <ToolbarMenu>
+                        <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
+                        <button
+                          onClick={() => setFilesOpen(true)}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title="Manage Chat Files"
+                        >
+                          <FolderOpen size={16} />
+                        </button>
+                        {expressionAgentEnabled && chatCharIds.length > 0 && (
+                          <button
+                            onClick={handleToggleSpritePosition}
+                            className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                            title={`Sprite: ${spritePosition} side (click to flip)`}
+                          >
+                            <FlipHorizontal2 size={16} />
+                          </button>
+                        )}
+                        <button
+                          onClick={() => setGalleryOpen(true)}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title="Gallery"
+                        >
+                          <Image size={16} />
+                        </button>
+                        <button
+                          onClick={() => setSettingsOpen(true)}
+                          className="rounded-lg p-1.5 text-white/50 transition-all hover:bg-white/10 hover:text-white/80"
+                          title="Chat Settings"
+                        >
+                          <Settings2 size={16} />
+                        </button>
+                      </ToolbarMenu>
+                    </div>
+                  )}
+                </>
+              )}
 
               {/* Combat Encounter Modal */}
               {encounterActive && <EncounterModal />}
@@ -861,7 +911,7 @@ export function ChatArea() {
 
             {/* Combined toolbar + HUD — vertical sidebar on right */}
             {hudPosition === "right" && chat && chatMeta.enableAgents && (
-              <div className="relative z-40 flex flex-col items-center gap-1.5 overflow-y-auto border-l border-white/5 bg-black/30 px-1.5 py-2 backdrop-blur-md">
+              <div className="relative z-40 flex flex-col items-center gap-1.5 overflow-y-auto border-l border-white/5 bg-black/30 px-1.5 py-2 backdrop-blur-md max-md:hidden">
                 <div className="flex flex-col items-center gap-1">
                   <SummaryButton chatId={chat?.id ?? null} summary={chatMeta.summary ?? null} />
                   <button
@@ -1398,6 +1448,68 @@ function AgentsHeaderButton({
         </div>
       )}
     </div>
+  );
+}
+
+/**
+ * ToolbarMenu — a "..." button on mobile that reveals all toolbar icons in a popover.
+ * On desktop, the icons are rendered inline normally.
+ */
+function ToolbarMenu({
+  children,
+  variant = "roleplay",
+}: {
+  children: React.ReactNode;
+  variant?: "roleplay" | "conversation";
+}) {
+  const [open, setOpen] = useState(false);
+  const ref = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    if (!open) return;
+    const handle = (e: MouseEvent) => {
+      if (ref.current && !ref.current.contains(e.target as Node)) setOpen(false);
+    };
+    document.addEventListener("mousedown", handle);
+    return () => document.removeEventListener("mousedown", handle);
+  }, [open]);
+
+  const isRp = variant === "roleplay";
+
+  return (
+    <>
+      {/* Desktop: show children inline */}
+      <div className="hidden md:flex items-center gap-1">{children}</div>
+      {/* Mobile: show ... button + popover */}
+      <div className="relative md:hidden" ref={ref}>
+        <button
+          onClick={() => setOpen(!open)}
+          className={cn(
+            "rounded-lg p-1.5 transition-all",
+            isRp
+              ? "text-white/50 hover:bg-white/10 hover:text-white/80"
+              : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]",
+            open && (isRp ? "bg-white/10 text-white/80" : "bg-[var(--accent)]"),
+          )}
+          title="More options"
+        >
+          <MoreHorizontal size={16} />
+        </button>
+        {open && (
+          <div
+            className={cn(
+              "absolute right-0 top-full z-50 mt-1 flex flex-col gap-0.5 rounded-xl border p-1.5 shadow-xl animate-message-in",
+              isRp
+                ? "border-white/10 bg-black/80 backdrop-blur-xl"
+                : "border-[var(--border)] bg-[var(--popover)] backdrop-blur-xl",
+            )}
+            onClick={() => setOpen(false)}
+          >
+            {children}
+          </div>
+        )}
+      </div>
+    </>
   );
 }
 

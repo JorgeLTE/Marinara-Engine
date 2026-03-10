@@ -255,18 +255,21 @@ function ActionsGroup({
   clearGameState,
 }: ActionsGroupProps) {
   return (
-    <div className={cn("flex gap-1.5", isVertical ? "flex-col items-center" : "items-center")}>
+    <div className={cn("flex gap-1.5", isVertical ? "flex-col items-center" : "items-center max-md:flex-col")}>
       {/* Agents */}
       <div className="relative">
         <button
           onClick={() => setAgentsOpen(!agentsOpen)}
           className={cn(
-            "flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-1 text-[10px] text-white/60 backdrop-blur-md transition-all hover:bg-white/10 hover:text-white",
+            "flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-1 text-[10px] text-white/60 backdrop-blur-md transition-all hover:bg-white/10 hover:text-white max-md:px-1.5 max-md:py-0.5 max-md:text-[9px]",
             agentsOpen && "bg-white/10 text-white",
           )}
           title="Agent activity"
         >
-          <Sparkles size={10} className={cn("text-purple-400/70", isAgentProcessing && "animate-pulse")} />
+          <Sparkles
+            size={10}
+            className={cn("text-purple-400/70 max-md:h-2.5 max-md:w-2.5", isAgentProcessing && "animate-pulse")}
+          />
           <span>Agents</span>
           {thoughtBubbles.length > 0 && (
             <span className="flex h-3.5 min-w-[0.875rem] items-center justify-center rounded-full bg-purple-500/80 px-1 text-[8px] font-bold text-white">
@@ -329,10 +332,10 @@ function ActionsGroup({
 
       <button
         onClick={clearGameState}
-        className="flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-1 text-[10px] text-white/60 backdrop-blur-md transition-all hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30"
+        className="flex items-center gap-1 rounded-full bg-white/5 border border-white/10 px-2 py-1 text-[10px] text-white/60 backdrop-blur-md transition-all hover:bg-red-500/20 hover:text-red-300 hover:border-red-500/30 max-md:px-1.5 max-md:py-0.5 max-md:text-[9px]"
         title="Clear trackers"
       >
-        <Trash2 size={12} />
+        <Trash2 size={12} className="max-md:h-2.5 max-md:w-2.5" />
         <span>Clear</span>
       </button>
     </div>
