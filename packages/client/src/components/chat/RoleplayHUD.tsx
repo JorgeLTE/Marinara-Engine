@@ -1427,26 +1427,43 @@ const WIDGET =
 const WIDGET_EDIT =
   "flex w-20 h-[3.75rem] max-md:w-11 max-md:h-8 flex-col items-center justify-center gap-0.5 max-md:gap-0 rounded-xl max-md:rounded-lg border bg-black/60 backdrop-blur-md overflow-hidden";
 
-/** Truncated label that shows full text on hover (desktop) or tap (mobile) */
-function WidgetLabel({ value, fallback, className }: { value: string; fallback: string; className?: string }) {
+/** Hook: mobile single-tap = tooltip, double-tap = edit; desktop click = edit */
+function useWidgetTap(onEdit: () => void) {
   const [showTip, setShowTip] = useState(false);
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const lastTapRef = useRef(0);
+  const tipTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const isTouchRef = useRef(false);
 
-  const handleTouchStart = () => {
-    timerRef.current = setTimeout(() => setShowTip(true), 400);
-  };
-  const handleTouchEnd = () => {
-    if (timerRef.current) clearTimeout(timerRef.current);
-    if (showTip) setTimeout(() => setShowTip(false), 1500);
-  };
+  const handleTouchStart = useCallback(() => {
+    isTouchRef.current = true;
+  }, []);
 
+  const handleClick = useCallback(() => {
+    if (!isTouchRef.current) {
+      onEdit();
+      return;
+    }
+    isTouchRef.current = false;
+    const now = Date.now();
+    if (now - lastTapRef.current < 350) {
+      setShowTip(false);
+      if (tipTimerRef.current) clearTimeout(tipTimerRef.current);
+      onEdit();
+    } else {
+      setShowTip(true);
+      if (tipTimerRef.current) clearTimeout(tipTimerRef.current);
+      tipTimerRef.current = setTimeout(() => setShowTip(false), 2000);
+    }
+    lastTapRef.current = now;
+  }, [onEdit]);
+
+  return { showTip, handleClick, handleTouchStart };
+}
+
+/** Truncated label with optional tooltip */
+function WidgetLabel({ value, fallback, showTip, className }: { value: string; fallback: string; showTip?: boolean; className?: string }) {
   return (
-    <span
-      className={cn("relative w-full max-md:px-0.5", className)}
-      onTouchStart={handleTouchStart}
-      onTouchEnd={handleTouchEnd}
-      onTouchCancel={handleTouchEnd}
-    >
+    <span className={cn("relative w-full max-md:px-0.5", className)}>
       <span
         className={cn(
           "block max-w-[4.5rem] max-md:max-w-full truncate text-center text-[9px] max-md:text-[7px] font-semibold leading-tight",
@@ -1496,7 +1513,7 @@ function WidgetInput({
       }}
       onBlur={commit}
       className={cn(
-        "w-[4.5rem] max-md:w-[2rem] bg-transparent text-center text-[9px] max-md:text-[7px] font-medium outline-none placeholder:text-white/20",
+        "w-[4.5rem] max-md:w-full max-md:px-0.5 bg-transparent text-center text-[9px] max-md:text-[10px] font-medium outline-none placeholder:text-white/20",
         accent,
       )}
     />
@@ -1507,6 +1524,7 @@ function WidgetInput({
 
 function LocationWidget({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
+  const { showTip, handleClick, handleTouchStart } = useWidgetTap(() => setEditing(true));
 
   if (editing) {
     return (
@@ -1519,7 +1537,8 @@ function LocationWidget({ value, onSave }: { value: string; onSave: (v: string) 
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
       className={cn(WIDGET, "border-emerald-500/20 text-emerald-300")}
       title={value || "Click to edit location"}
     >
@@ -1588,7 +1607,7 @@ function LocationWidget({ value, onSave }: { value: string; onSave: (v: string) 
           className="relative text-emerald-400 drop-shadow-[0_0_4px_rgba(52,211,153,0.5)] max-md:h-3 max-md:w-3"
         />
       </div>
-      <WidgetLabel value={value} fallback="Location" />
+      <WidgetLabel value={value} fallback="Location" showTip={showTip} />
     </button>
   );
 }
@@ -1597,6 +1616,7 @@ function LocationWidget({ value, onSave }: { value: string; onSave: (v: string) 
 
 function CalendarWidget({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
+  const { showTip, handleClick, handleTouchStart } = useWidgetTap(() => setEditing(true));
   const { day, month } = value ? parseDateLabel(value) : { day: null, month: null };
 
   if (editing) {
@@ -1610,7 +1630,8 @@ function CalendarWidget({ value, onSave }: { value: string; onSave: (v: string) 
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
       className={cn(WIDGET, "border-violet-500/20 text-violet-300")}
       title={value || "Click to edit date"}
     >
@@ -1624,7 +1645,7 @@ function CalendarWidget({ value, onSave }: { value: string; onSave: (v: string) 
           <span className="text-[12px] max-md:text-[8px] font-bold leading-none text-violet-200/80">{day || "?"}</span>
         </div>
       </div>
-      <WidgetLabel value={value} fallback="Date" />
+      <WidgetLabel value={value} fallback="Date" showTip={showTip} />
     </button>
   );
 }
@@ -1633,6 +1654,7 @@ function CalendarWidget({ value, onSave }: { value: string; onSave: (v: string) 
 
 function ClockWidget({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
+  const { showTip, handleClick, handleTouchStart } = useWidgetTap(() => setEditing(true));
   const hour = value ? extractHourFromTime(value) : -1;
   const hourAngle = hour >= 0 ? ((hour % 12) / 12) * 360 - 90 : -90;
   const minuteAngle = hour >= 0 ? (parseMinutes(value) / 60) * 360 - 90 : 90;
@@ -1650,7 +1672,8 @@ function ClockWidget({ value, onSave }: { value: string; onSave: (v: string) => 
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
       className={cn(WIDGET, "border-amber-500/20 text-amber-300")}
       title={value || "Click to edit time"}
     >
@@ -1708,7 +1731,7 @@ function ClockWidget({ value, onSave }: { value: string; onSave: (v: string) => 
           <circle cx="16" cy="16" r="1" fill="currentColor" className="text-amber-400/70" />
         </svg>
       </div>
-      <WidgetLabel value={value || period || ""} fallback="Time" />
+      <WidgetLabel value={value || period || ""} fallback="Time" showTip={showTip} />
     </button>
   );
 }
@@ -1717,6 +1740,7 @@ function ClockWidget({ value, onSave }: { value: string; onSave: (v: string) => 
 
 function WeatherWidget({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
+  const { showTip, handleClick, handleTouchStart } = useWidgetTap(() => setEditing(true));
   const emoji = value ? getWeatherEmoji(value) : "🌤️";
 
   if (editing) {
@@ -1730,14 +1754,15 @@ function WeatherWidget({ value, onSave }: { value: string; onSave: (v: string) =
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
       className={cn(WIDGET, "border-sky-500/20 text-sky-300")}
       title={value || "Click to edit weather"}
     >
       <div className="flex h-7 max-md:h-4 items-center justify-center shrink-0">
         <span className="text-xl max-md:text-xs leading-none drop-shadow-[0_0_6px_rgba(56,189,248,0.3)]">{emoji}</span>
       </div>
-      <WidgetLabel value={value} fallback="Weather" />
+      <WidgetLabel value={value} fallback="Weather" showTip={showTip} />
     </button>
   );
 }
@@ -1746,6 +1771,7 @@ function WeatherWidget({ value, onSave }: { value: string; onSave: (v: string) =
 
 function TemperatureWidget({ value, onSave }: { value: string; onSave: (v: string) => void }) {
   const [editing, setEditing] = useState(false);
+  const { showTip, handleClick, handleTouchStart } = useWidgetTap(() => setEditing(true));
   const temp = value ? parseTemperature(value) : null;
   const fillPct = temp !== null ? Math.max(5, Math.min(100, ((temp + 20) / 65) * 100)) : 40;
   const fillColor =
@@ -1770,7 +1796,8 @@ function TemperatureWidget({ value, onSave }: { value: string; onSave: (v: strin
 
   return (
     <button
-      onClick={() => setEditing(true)}
+      onClick={handleClick}
+      onTouchStart={handleTouchStart}
       className={cn(WIDGET, "border-rose-500/20 text-rose-300")}
       title={value || "Click to edit temperature"}
     >
@@ -1820,7 +1847,7 @@ function TemperatureWidget({ value, onSave }: { value: string; onSave: (v: strin
           ))}
         </svg>
       </div>
-      <WidgetLabel value={value} fallback="Temp" />
+      <WidgetLabel value={value} fallback="Temp" showTip={showTip} />
     </button>
   );
 }
