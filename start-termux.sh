@@ -95,8 +95,9 @@ fi
 if [ ! -d "packages/client/dist" ]; then
     echo "  [..] Building client..."
     # Skip tsc type-check on Termux — it OOMs on low-memory devices.
+    # Skip PWA service worker — terser minifier OOMs on low-memory devices.
     # Vite doesn't need tsc output (tsconfig has noEmit: true).
-    pnpm --filter @marinara-engine/client exec vite build
+    SKIP_PWA=1 pnpm --filter @marinara-engine/client exec vite build
 fi
 
 # ── Database schema ──

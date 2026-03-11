@@ -8,7 +8,8 @@ export default defineConfig({
   plugins: [
     react(),
     tailwindcss(),
-    VitePWA({
+    !process.env.SKIP_PWA &&
+      VitePWA({
       registerType: "autoUpdate",
       devOptions: { enabled: false },
       manifest: false, // We use the static manifest.json in public/
@@ -25,7 +26,7 @@ export default defineConfig({
         ],
       },
     }),
-  ],
+  ].filter(Boolean),
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),
