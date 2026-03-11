@@ -42,12 +42,23 @@ if [ -d ".git" ]; then
 fi
 
 # ── Check Node.js ──
-if ! command -v node &> /dev/null; then
-    echo "  [..] Node.js not found — installing via pkg..."
+if ! command -v node &> /dev/null || ! node -v &> /dev/null; then
+    echo "  [..] Node.js not found or broken — installing via pkg..."
     pkg install -y nodejs-lts
 fi
 
-NODE_VERSION=$(node -v | cut -d'.' -f1 | tr -d 'v')
+if ! NODE_VERSION=$(node -v 2>/dev/null | cut -d'.' -f1 | tr -d 'v'); then
+    echo "  [ERR] Node.js is still not working after install."
+    echo "        Try:  pkg upgrade && pkg install nodejs-lts"
+    exit 1
+fi
+
+if [ -z "$NODE_VERSION" ]; then
+    echo "  [ERR] Could not determine Node.js version."
+    echo "        Try:  pkg upgrade && pkg install nodejs-lts"
+    exit 1
+fi
+
 echo "  [OK] Node.js $(node -v) found"
 
 if [ "$NODE_VERSION" -lt 20 ]; then
