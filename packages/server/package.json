@@ -32,6 +32,9 @@
     "png-chunks-extract": "^1.0.0",
     "png-chunk-text": "^1.0.0"
   },
+  "optionalDependencies": {
+    "better-sqlite3": "^11.0.0"
+  },
   "devDependencies": {
     "@types/node": "^22.0.0",
     "drizzle-kit": "^0.30.0",

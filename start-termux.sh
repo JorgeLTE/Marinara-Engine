@@ -14,8 +14,9 @@ echo ""
 cd "$(dirname "$0")"
 
 # ── Ensure required Termux packages ──
-for pkg_name in git python make; do
-    if ! command -v "$pkg_name" &> /dev/null; then
+# build-essential provides clang/make/pkg-config needed for better-sqlite3 native compilation
+for pkg_name in git python build-essential; do
+    if ! dpkg -s "$pkg_name" &> /dev/null; then
         echo "  [..] Installing $pkg_name..."
         pkg install -y "$pkg_name" 2>/dev/null || true
     fi
@@ -129,6 +130,9 @@ fi
 export NODE_ENV=production
 export PORT=${PORT:-7860}
 export HOST=${HOST:-0.0.0.0}
+
+# Use better-sqlite3 on Termux — @libsql/client has no Android ARM64 native binary
+export DATABASE_DRIVER=${DATABASE_DRIVER:-better-sqlite3}
 
 # Open in Termux browser if available (no-op if not)
 if command -v termux-open-url &> /dev/null; then

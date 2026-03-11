@@ -5,7 +5,7 @@ import Fastify from "fastify";
 import cors from "@fastify/cors";
 import multipart from "@fastify/multipart";
 import fastifyStatic from "@fastify/static";
-import { getDB } from "./db/connection.js";
+import { getDB, type DB } from "./db/connection.js";
 import { registerRoutes } from "./routes/index.js";
 import { errorHandler } from "./middleware/error-handler.js";
 import { runMigrations } from "./db/migrate.js";
@@ -37,7 +37,7 @@ export async function buildApp(https?: { cert: Buffer; key: Buffer }) {
   });
 
   // ── Database ──
-  const db = getDB();
+  const db = await getDB();
   app.decorate("db", db);
 
   // ── Migrations (add missing columns to existing tables) ──
@@ -80,6 +80,6 @@ export async function buildApp(https?: { cert: Buffer; key: Buffer }) {
 // Type augmentation so routes can access `fastify.db`
 declare module "fastify" {
   interface FastifyInstance {
-    db: ReturnType<typeof getDB>;
+    db: DB;
   }
 }

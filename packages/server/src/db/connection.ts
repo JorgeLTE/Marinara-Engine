@@ -1,37 +1,60 @@
 // ──────────────────────────────────────────────
 // Database Connection
 // ──────────────────────────────────────────────
-import { createClient } from "@libsql/client";
-import { drizzle } from "drizzle-orm/libsql";
 import * as schema from "./schema/index.js";
 import { mkdirSync } from "node:fs";
 import { dirname } from "node:path";
 
-let db: ReturnType<typeof createDB> | null = null;
+type DrizzleDB = ReturnType<typeof import("drizzle-orm/libsql").drizzle<typeof schema>>;
 
-function createDB(dbPath: string) {
-  // Ensure directory exists
-  mkdirSync(dirname(dbPath), { recursive: true });
+let db: DrizzleDB | null = null;
 
-  const client = createClient({
-    url: `file:${dbPath}`,
-  });
+async function createWithLibsql(dbPath: string): Promise<DrizzleDB> {
+  const { createClient } = await import("@libsql/client");
+  const { drizzle } = await import("drizzle-orm/libsql");
 
-  // Enable WAL journal mode and relaxed sync for much better write perf on Windows/NTFS.
-  // WAL avoids the expensive DELETE-journal fsync cycle per transaction.
+  const client = createClient({ url: `file:${dbPath}` });
   client.execute("PRAGMA journal_mode=WAL");
   client.execute("PRAGMA synchronous=NORMAL");
 
   return drizzle(client, { schema });
 }
 
-export function getDB() {
+async function createWithBetterSqlite3(dbPath: string): Promise<DrizzleDB> {
+  const Database = (await import("better-sqlite3")).default;
+  const { drizzle } = await import("drizzle-orm/better-sqlite3");
+
+  const sqlite = new Database(dbPath);
+  sqlite.pragma("journal_mode = WAL");
+  sqlite.pragma("synchronous = NORMAL");
+
+  // Cast is safe — both Drizzle SQLite drivers share the same query API
+  return drizzle(sqlite, { schema }) as unknown as DrizzleDB;
+}
+
+async function createDB(dbPath: string): Promise<DrizzleDB> {
+  mkdirSync(dirname(dbPath), { recursive: true });
+
+  // If explicitly requested (e.g. Termux), skip libsql entirely
+  if (process.env.DATABASE_DRIVER === "better-sqlite3") {
+    return createWithBetterSqlite3(dbPath);
+  }
+
+  // Default: try libsql, fall back to better-sqlite3
+  try {
+    return await createWithLibsql(dbPath);
+  } catch {
+    return createWithBetterSqlite3(dbPath);
+  }
+}
+
+export async function getDB() {
   if (!db) {
     const dbUrl = process.env.DATABASE_URL ?? "file:./data/marinara-engine.db";
     const dbPath = dbUrl.replace(/^file:/, "");
-    db = createDB(dbPath);
+    db = await createDB(dbPath);
   }
   return db;
 }
 
-export type DB = ReturnType<typeof getDB>;
+export type DB = DrizzleDB;
