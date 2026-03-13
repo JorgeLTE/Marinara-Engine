@@ -123,9 +123,26 @@ export async function executeKnowledgeRetrieval(
     };
   }
 
-  // If we had extractions but the last chunk already got previous_extractions,
-  // the last result IS the consolidated output. Return the last extraction.
+  // If we had extractions and multiple chunks, prefer the consolidated output
+  // when available. If the final chunk failed or produced no output, we may
+  // have fewer extractions than chunks; in that case, fall back to combining
+  // all partial extractions so we don't drop earlier results.
   if (chunks.length > 1 && extractions.length > 0) {
+    if (extractions.length < chunks.length) {
+      // Best-effort consolidation: concatenate all partial extractions.
+      const combined = extractions.filter(Boolean).join("\n\n");
+      return {
+        agentId: config.id,
+        agentType: config.type,
+        type: "context_injection",
+        data: { text: combined },
+        tokensUsed: totalTokens,
+        durationMs: totalDuration,
+        success: true,
+        error: null,
+      };
+    }
+
     // The last extraction is the consolidated result
     const consolidated = extractions[extractions.length - 1]!;
     return {
