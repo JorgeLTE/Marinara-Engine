@@ -258,7 +258,7 @@ export function createChatsStorage(db: DB) {
       return db.select().from(messageSwipes).where(eq(messageSwipes.messageId, messageId)).orderBy(messageSwipes.index);
     },
 
-    async addSwipe(messageId: string, content: string) {
+    async addSwipe(messageId: string, content: string, silent?: boolean) {
       const existing = await this.getSwipes(messageId);
       const nextIndex = existing.length;
 
@@ -285,19 +285,23 @@ export function createChatsStorage(db: DB) {
         extra: JSON.stringify({}),
         createdAt: now(),
       });
-      // Set active swipe to the new one and reset message extra for the fresh swipe
-      // (thinking/generationInfo will be populated by updateMessageExtra after generation)
-      const clearedExtra = msg
-        ? {
-            ...(typeof msg.extra === "string" ? JSON.parse(msg.extra) : (msg.extra ?? {})),
-            thinking: null,
-            generationInfo: null,
-          }
-        : {};
-      await db
-        .update(messages)
-        .set({ activeSwipeIndex: nextIndex, content, extra: JSON.stringify(clearedExtra) })
-        .where(eq(messages.id, messageId));
+
+      // When silent, only insert the swipe row without switching the active index
+      if (!silent) {
+        // Set active swipe to the new one and reset message extra for the fresh swipe
+        // (thinking/generationInfo will be populated by updateMessageExtra after generation)
+        const clearedExtra = msg
+          ? {
+              ...(typeof msg.extra === "string" ? JSON.parse(msg.extra) : (msg.extra ?? {})),
+              thinking: null,
+              generationInfo: null,
+            }
+          : {};
+        await db
+          .update(messages)
+          .set({ activeSwipeIndex: nextIndex, content, extra: JSON.stringify(clearedExtra) })
+          .where(eq(messages.id, messageId));
+      }
       return { id, index: nextIndex };
     },
 

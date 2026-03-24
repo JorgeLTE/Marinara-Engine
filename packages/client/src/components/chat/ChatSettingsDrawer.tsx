@@ -187,12 +187,13 @@ export function ChatSettingsDrawer({ chat, open, onClose }: ChatSettingsDrawerPr
     if (msg?.id && firstMesConfirm.alternateGreetings.length > 0) {
       for (const greeting of firstMesConfirm.alternateGreetings) {
         if (greeting.trim()) {
-          await api.post(`/chats/${chat.id}/messages/${msg.id}/swipes`, { content: greeting });
+          await api.post(`/chats/${chat.id}/messages/${msg.id}/swipes`, { content: greeting, silent: true });
         }
       }
+      qc.invalidateQueries({ queryKey: chatKeys.messages(chat.id) });
     }
     setFirstMesConfirm(null);
-  }, [firstMesConfirm, createMessage, chat.id]);
+  }, [firstMesConfirm, createMessage, chat.id, qc]);
 
   // ── Mutations ──
   const toggleCharacter = (charId: string) => {

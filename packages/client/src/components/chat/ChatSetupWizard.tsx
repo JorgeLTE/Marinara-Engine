@@ -22,11 +22,12 @@ import { useConnections } from "../../hooks/use-connections";
 import { usePresets, usePresetFull } from "../../hooks/use-presets";
 import { useCharacters, usePersonas } from "../../hooks/use-characters";
 import { useLorebooks } from "../../hooks/use-lorebooks";
-import { useUpdateChat, useUpdateChatMetadata, useCreateMessage } from "../../hooks/use-chats";
+import { useUpdateChat, useUpdateChatMetadata, useCreateMessage, chatKeys } from "../../hooks/use-chats";
 import { useUIStore } from "../../stores/ui.store";
 import { api } from "../../lib/api-client";
 import { ChoiceSelectionModal } from "../presets/ChoiceSelectionModal";
 import type { Chat } from "@marinara-engine/shared";
+import { useQueryClient } from "@tanstack/react-query";
 
 // ─── Step definitions ─────────────────────────
 
@@ -508,6 +509,7 @@ function RoleplaySetupWizard({ chat, onFinish }: ChatSetupWizardProps) {
   const updateChat = useUpdateChat();
   const updateMeta = useUpdateChatMetadata();
   const createMessage = useCreateMessage(chat.id);
+  const queryClient = useQueryClient();
   const openRightPanel = useUIStore((s) => s.openRightPanel);
 
   // Fetch full preset data to check for choice blocks (variables)
@@ -607,13 +609,17 @@ function RoleplaySetupWizard({ chat, onFinish }: ChatSetupWizardProps) {
                 if (firstMes) {
                   createMessage
                     .mutateAsync({ role: "assistant", content: firstMes, characterId: charId })
-                    .then((msg) => {
+                    .then(async (msg) => {
                       if (msg?.id && altGreetings.length > 0) {
                         for (const greeting of altGreetings) {
                           if (greeting.trim()) {
-                            api.post(`/chats/${chat.id}/messages/${msg.id}/swipes`, { content: greeting });
+                            await api.post(`/chats/${chat.id}/messages/${msg.id}/swipes`, {
+                              content: greeting,
+                              silent: true,
+                            });
                           }
                         }
+                        queryClient.invalidateQueries({ queryKey: chatKeys.messages(chat.id) });
                       }
                     });
                 }
@@ -625,7 +631,7 @@ function RoleplaySetupWizard({ chat, onFinish }: ChatSetupWizardProps) {
         );
       }
     },
-    [chat.id, chatCharIds, characters, createMessage, updateChat],
+    [chat.id, chatCharIds, characters, createMessage, updateChat, queryClient],
   );
 
   const toggleLorebook = useCallback(

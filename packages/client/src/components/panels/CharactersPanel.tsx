@@ -10,9 +10,10 @@ import {
   useUpdateGroup,
   useDeleteGroup,
 } from "../../hooks/use-characters";
-import { useUpdateChat, useCreateMessage } from "../../hooks/use-chats";
+import { useUpdateChat, useCreateMessage, chatKeys } from "../../hooks/use-chats";
 import { api } from "../../lib/api-client";
 import { useChatStore } from "../../stores/chat.store";
+import { useQueryClient } from "@tanstack/react-query";
 import {
   Plus,
   Trash2,
@@ -54,6 +55,7 @@ export function CharactersPanel() {
   const activeChat = useChatStore((s) => s.activeChat);
   const updateChat = useUpdateChat();
   const createMessage = useCreateMessage(activeChat?.id ?? null);
+  const queryClient = useQueryClient();
 
   const [search, setSearch] = useState("");
   const [sort, setSort] = useState<SortOption>("name-asc");
@@ -802,9 +804,13 @@ export function CharactersPanel() {
                   if (msg?.id && firstMesConfirm.alternateGreetings.length > 0) {
                     for (const greeting of firstMesConfirm.alternateGreetings) {
                       if (greeting.trim()) {
-                        await api.post(`/chats/${activeChat!.id}/messages/${msg.id}/swipes`, { content: greeting });
+                        await api.post(`/chats/${activeChat!.id}/messages/${msg.id}/swipes`, {
+                          content: greeting,
+                          silent: true,
+                        });
                       }
                     }
+                    queryClient.invalidateQueries({ queryKey: chatKeys.messages(activeChat!.id) });
                   }
                   setFirstMesConfirm(null);
                 }}

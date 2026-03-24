@@ -446,8 +446,8 @@ export async function chatsRoutes(app: FastifyInstance) {
 
   // Add a swipe
   app.post<{ Params: { chatId: string; messageId: string } }>("/:chatId/messages/:messageId/swipes", async (req) => {
-    const { content } = req.body as { content: string };
-    return storage.addSwipe(req.params.messageId, content);
+    const { content, silent } = req.body as { content: string; silent?: boolean };
+    return storage.addSwipe(req.params.messageId, content, silent);
   });
 
   // Set active swipe
