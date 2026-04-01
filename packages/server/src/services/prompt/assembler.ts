@@ -353,7 +353,9 @@ export async function assemblePrompt(input: AssemblerInput): Promise<AssemblerOu
     messages: finalMessages,
     parameters,
     lorebookDepthEntriesCount,
-    ...(markerCtx.updatedEntryStateOverrides ? { updatedEntryStateOverrides: markerCtx.updatedEntryStateOverrides } : {}),
+    ...(markerCtx.updatedEntryStateOverrides
+      ? { updatedEntryStateOverrides: markerCtx.updatedEntryStateOverrides }
+      : {}),
   };
 }
 

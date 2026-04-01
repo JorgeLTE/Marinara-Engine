@@ -543,7 +543,9 @@ export async function generateRoutes(app: FastifyInstance) {
             activeAgentIds: chatActiveAgentIds,
             activeLorebookIds: chatActiveLorebookIds,
             chatEmbedding: chatContextEmbedding,
-            entryStateOverrides: (chatMeta.entryStateOverrides as Record<string, { ephemeral?: number | null; enabled?: boolean }>) ?? undefined,
+            entryStateOverrides:
+              (chatMeta.entryStateOverrides as Record<string, { ephemeral?: number | null; enabled?: boolean }>) ??
+              undefined,
           };
 
           const assembled = await assemblePrompt(assemblerInput);
@@ -1514,7 +1516,9 @@ export async function generateRoutes(app: FastifyInstance) {
             characterIds,
             activeLorebookIds: chatActiveLorebookIds,
             chatEmbedding: chatContextEmbedding,
-            entryStateOverrides: (chatMeta.entryStateOverrides as Record<string, { ephemeral?: number | null; enabled?: boolean }>) ?? undefined,
+            entryStateOverrides:
+              (chatMeta.entryStateOverrides as Record<string, { ephemeral?: number | null; enabled?: boolean }>) ??
+              undefined,
           });
 
           // Persist updated per-chat entry state overrides (ephemeral countdown)
