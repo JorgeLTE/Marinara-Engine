@@ -22,6 +22,8 @@ export interface LorebookScanResult {
   totalEntries: number;
   totalTokensEstimate: number;
   activatedEntryIds: string[];
+  /** Updated per-chat entry state overrides (ephemeral countdown). Caller should persist to chat metadata. */
+  updatedEntryStateOverrides?: Record<string, { ephemeral?: number | null; enabled?: boolean }>;
 }
 
 /**
@@ -44,6 +46,9 @@ export async function processLorebooks(
     chatEmbedding?: number[] | null;
     /** Cosine similarity threshold for semantic matching (0-1, default 0.3). */
     semanticThreshold?: number;
+    /** Per-chat entry state overrides (from chat metadata). When provided, ephemeral
+     *  countdown is tracked here instead of modifying the global entry row. */
+    entryStateOverrides?: Record<string, { ephemeral?: number | null; enabled?: boolean }>;
   },
 ): Promise<LorebookScanResult> {
   const storage = createLorebooksStorage(db);
@@ -59,7 +64,29 @@ export async function processLorebooks(
       : undefined;
 
   // Fetch active entries (filtered if context provided)
-  const allEntries = (await storage.listActiveEntries(filters)) as unknown as LorebookEntry[];
+  let allEntries = (await storage.listActiveEntries(filters)) as unknown as LorebookEntry[];
+
+  // Apply per-chat entry state overrides — an entry that was disabled by ephemeral
+  // countdown in *this* chat should be excluded, and ephemeral values should
+  // reflect the per-chat remaining count rather than the global default.
+  const overrides = options?.entryStateOverrides;
+  if (overrides) {
+    allEntries = allEntries
+      .filter((e) => {
+        const ov = overrides[e.id];
+        // If per-chat override explicitly disabled this entry, skip it
+        if (ov && ov.enabled === false) return false;
+        return true;
+      })
+      .map((e) => {
+        const ov = overrides[e.id];
+        if (ov && ov.ephemeral !== undefined) {
+          // Use per-chat ephemeral remaining instead of global value
+          return { ...e, ephemeral: ov.ephemeral };
+        }
+        return e;
+      });
+  }
 
   if (allEntries.length === 0) {
     return {
@@ -105,25 +132,41 @@ export async function processLorebooks(
     activated = scanForActivatedEntries(messages, allEntries, scanOpts);
   }
 
-  // Decrement ephemeral counters for activated entries and auto-disable when exhausted
-  const ephemeralUpdates: Array<{ id: string; ephemeral: number | null; disable: boolean }> = [];
-  for (const a of activated) {
-    if (a.entry.ephemeral !== null && a.entry.ephemeral > 0) {
-      const remaining = a.entry.ephemeral - 1;
-      ephemeralUpdates.push({ id: a.entry.id, ephemeral: remaining, disable: remaining <= 0 });
+  // Decrement ephemeral counters for activated entries.
+  // When per-chat overrides are provided, track the countdown in those overrides
+  // so each chat has independent ephemeral state. Otherwise fall back to global
+  // DB writes (legacy / test-scan behavior, but skip global writes for test scans
+  // that don't pass a chatId).
+  let updatedOverrides: Record<string, { ephemeral?: number | null; enabled?: boolean }> | undefined;
+
+  if (overrides) {
+    // Per-chat tracking: write to overrides, leave global entry untouched
+    updatedOverrides = { ...overrides };
+    for (const a of activated) {
+      if (a.entry.ephemeral !== null && a.entry.ephemeral > 0) {
+        const remaining = a.entry.ephemeral - 1;
+        updatedOverrides[a.entry.id] = {
+          ...updatedOverrides[a.entry.id],
+          ephemeral: remaining,
+          ...(remaining <= 0 ? { enabled: false } : {}),
+        };
+      }
     }
-  }
-  if (ephemeralUpdates.length > 0) {
-    for (const u of ephemeralUpdates) {
-      try {
-        const patch: Record<string, unknown> = { ephemeral: u.ephemeral };
-        if (u.disable) patch.enabled = false;
-        await storage.updateEntry(u.id, patch as any);
-      } catch {
-        // Non-fatal — don't crash generation if the DB write fails (e.g. SQLITE_READONLY)
+  } else if (options?.chatId) {
+    // Legacy path: first call for this chat (no overrides yet) — initialise per-chat overrides
+    updatedOverrides = {};
+    for (const a of activated) {
+      if (a.entry.ephemeral !== null && a.entry.ephemeral > 0) {
+        const remaining = a.entry.ephemeral - 1;
+        updatedOverrides[a.entry.id] = {
+          ephemeral: remaining,
+          ...(remaining <= 0 ? { enabled: false } : {}),
+        };
       }
     }
   }
+  // When neither overrides nor chatId is present (e.g. test scan), do nothing —
+  // don't modify global state or return overrides.
 
   // Process into injectable content
   const result = processActivatedEntries(activated, tokenBudget);
@@ -131,5 +174,6 @@ export async function processLorebooks(
   return {
     ...result,
     activatedEntryIds: activated.map((a) => a.entry.id),
+    ...(updatedOverrides ? { updatedEntryStateOverrides: updatedOverrides } : {}),
   };
 }

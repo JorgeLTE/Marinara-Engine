@@ -105,6 +105,8 @@ export interface AssemblerInput {
   activeLorebookIds?: string[];
   /** Pre-computed embedding of chat context for semantic lorebook matching. */
   chatEmbedding?: number[] | null;
+  /** Per-chat ephemeral state overrides for lorebook entries (from chat metadata). */
+  entryStateOverrides?: Record<string, { ephemeral?: number | null; enabled?: boolean }>;
 }
 
 /** Output of the assembler. */
@@ -115,6 +117,8 @@ export interface AssemblerOutput {
   parameters: GenerationParameters;
   /** Any lorebook depth entries that were queued (already injected into messages) */
   lorebookDepthEntriesCount: number;
+  /** Updated per-chat entry state overrides after ephemeral processing. Caller should persist to chat metadata. */
+  updatedEntryStateOverrides?: Record<string, { ephemeral?: number | null; enabled?: boolean }>;
 }
 
 // ═══════════════════════════════════════════════
@@ -203,6 +207,7 @@ export async function assemblePrompt(input: AssemblerInput): Promise<AssemblerOu
     activeAgentIds: input.activeAgentIds ?? [],
     activeLorebookIds: input.activeLorebookIds ?? [],
     chatEmbedding: input.chatEmbedding ?? null,
+    entryStateOverrides: input.entryStateOverrides,
   };
 
   // ── Phase 1: Resolve sections in preset order ──
@@ -348,6 +353,7 @@ export async function assemblePrompt(input: AssemblerInput): Promise<AssemblerOu
     messages: finalMessages,
     parameters,
     lorebookDepthEntriesCount,
+    ...(markerCtx.updatedEntryStateOverrides ? { updatedEntryStateOverrides: markerCtx.updatedEntryStateOverrides } : {}),
   };
 }
 

@@ -543,6 +543,7 @@ export async function generateRoutes(app: FastifyInstance) {
             activeAgentIds: chatActiveAgentIds,
             activeLorebookIds: chatActiveLorebookIds,
             chatEmbedding: chatContextEmbedding,
+            entryStateOverrides: (chatMeta.entryStateOverrides as Record<string, { ephemeral?: number | null; enabled?: boolean }>) ?? undefined,
           };
 
           const assembled = await assemblePrompt(assemblerInput);
@@ -563,6 +564,12 @@ export async function generateRoutes(app: FastifyInstance) {
             if (knownModel) {
               if (knownModel.maxOutput) maxTokens = knownModel.maxOutput;
             }
+          }
+
+          // Persist updated per-chat entry state overrides (ephemeral countdown)
+          if (assembled.updatedEntryStateOverrides) {
+            chatMeta.entryStateOverrides = assembled.updatedEntryStateOverrides;
+            await chats.updateMetadata(input.chatId, chatMeta);
           }
         }
       }
@@ -1507,7 +1514,14 @@ export async function generateRoutes(app: FastifyInstance) {
             characterIds,
             activeLorebookIds: chatActiveLorebookIds,
             chatEmbedding: chatContextEmbedding,
+            entryStateOverrides: (chatMeta.entryStateOverrides as Record<string, { ephemeral?: number | null; enabled?: boolean }>) ?? undefined,
           });
+
+          // Persist updated per-chat entry state overrides (ephemeral countdown)
+          if (lorebookResult.updatedEntryStateOverrides) {
+            chatMeta.entryStateOverrides = lorebookResult.updatedEntryStateOverrides;
+            await chats.updateMetadata(input.chatId, chatMeta);
+          }
           const loreContent = [lorebookResult.worldInfoBefore, lorebookResult.worldInfoAfter]
             .filter(Boolean)
             .join("\n");
