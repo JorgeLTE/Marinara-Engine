@@ -1308,6 +1308,17 @@ export function BotBrowserView() {
     setDetail(null);
     setDetailLoading(true);
     try {
+      // Check JanitorAI session freshness before loading detail
+      if (sourceId === "janitor" && janitorLoggedIn) {
+        try {
+          const sessionRes = await fetch("/api/bot-browser/janitor/session");
+          const sessionData = await sessionRes.json();
+          if (!sessionData?.active) {
+            setJanitorLoggedIn(false);
+            toast.warning("JanitorAI session expired — please log in again.", { duration: 5000 });
+          }
+        } catch { /* ignore */ }
+      }
       const d = await provider.fetchDetail(card);
       setDetail(d);
     } catch {
@@ -1791,12 +1802,14 @@ export function BotBrowserView() {
               loading={detailLoading}
               importing={importing}
               provider={provider}
+              janitorLoggedIn={janitorLoggedIn}
               onBack={() => {
                 setSelectedCard(null);
                 setDetail(null);
               }}
               onImport={handleImport}
               onDetailUpdate={setDetail}
+              onShowLogin={() => setShowLoginModal(true)}
             />
           ) : (
             <div className="flex flex-col gap-4">
@@ -2561,29 +2574,95 @@ function DetailView({
   loading,
   importing,
   provider,
+  janitorLoggedIn,
   onBack,
   onImport,
   onDetailUpdate,
+  onShowLogin,
 }: {
   card: BrowseCard;
   detail: CardDetail | null;
   loading: boolean;
   importing: boolean;
   provider: ProviderConfig;
+  janitorLoggedIn?: boolean;
   onBack: () => void;
   onImport: (card: BrowseCard) => void;
   onDetailUpdate?: (detail: CardDetail) => void;
+  onShowLogin?: () => void;
 }) {
   const [imgError, setImgError] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [showExtractWarning, setShowExtractWarning] = useState(false);
   const [extractedDetail, setExtractedDetail] = useState<CardDetail | null>(null);
+  const [downloading, setDownloading] = useState(false);
 
   // Detect if this is a JanitorAI character with hidden definitions
   const isJanitor = provider.id === "janitor";
   const hasDefinitions = !!(detail?.description || detail?.personality || detail?.firstMessage || detail?.scenario);
   const isHidden = isJanitor && !hasDefinitions && !extractedDetail;
   const displayDetail = extractedDetail || detail;
+
+  // Button state logic for JanitorAI
+  const janitorNotLoggedIn = isJanitor && !janitorLoggedIn;
+  const janitorHiddenNotExtracted = isJanitor && janitorLoggedIn && isHidden;
+  const importDisabled = importing || janitorNotLoggedIn || janitorHiddenNotExtracted;
+  const downloadDisabled = downloading || janitorNotLoggedIn || janitorHiddenNotExtracted;
+
+  const importButtonLabel = importing
+    ? "Importing..."
+    : janitorNotLoggedIn
+      ? "Log in to JanitorAI to Import"
+      : janitorHiddenNotExtracted
+        ? "Extract Definitions to Unlock"
+        : "Import";
+
+  const downloadButtonLabel = downloading
+    ? "Building PNG..."
+    : janitorNotLoggedIn
+      ? "Log in to JanitorAI to Download"
+      : janitorHiddenNotExtracted
+        ? "Extract Definitions to Unlock"
+        : "Download as PNG";
+
+  const handleDownloadPng = async () => {
+    setDownloading(true);
+    try {
+      const d = displayDetail;
+      const descriptionText = d?.description || "";
+      const personalityText = d?.personality || "";
+      const charData: Record<string, unknown> = {
+        name: card.name,
+        description: descriptionText || personalityText,
+        personality: personalityText && descriptionText ? personalityText : "",
+        scenario: d?.scenario || "",
+        first_mes: d?.firstMessage || "",
+        mes_example: d?.exampleDialogs || "",
+        creator_notes: d?.creatorNotes || "",
+        tags: card.tags || [],
+        creator: card.creator || "",
+        alternate_greetings: d?.alternateGreetings || [],
+        extensions: { [`${provider.id}`]: { id: card.id } },
+      };
+
+      const blob = await buildCharacterCardPng(card.avatarUrl, charData);
+
+      // Trigger download
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${(card.name || "character").replace(/[^a-zA-Z0-9_-]/g, "_")}.png`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      toast.success(`Downloaded "${card.name}" as PNG character card!`);
+    } catch (err) {
+      toast.error(err instanceof Error ? err.message : "Download failed");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   const handleExtract = async () => {
     setShowExtractWarning(false);
@@ -2659,12 +2738,48 @@ function DetailView({
             </div>
             <div className="flex flex-col gap-2 max-md:flex-1">
               <button
-                onClick={() => onImport(card)}
-                disabled={importing}
-                className="flex items-center justify-center gap-2 rounded-lg bg-[var(--primary)] px-4 py-2.5 text-sm font-medium text-[var(--primary-foreground)] transition-all hover:opacity-90 active:scale-95 disabled:opacity-50"
+                onClick={() => {
+                  if (janitorNotLoggedIn && onShowLogin) {
+                    onShowLogin();
+                  } else if (!importDisabled) {
+                    onImport(card);
+                  }
+                }}
+                disabled={importDisabled && !janitorNotLoggedIn}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-xs font-medium transition-all active:scale-95 disabled:opacity-50",
+                  janitorNotLoggedIn
+                    ? "cursor-pointer border border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    : janitorHiddenNotExtracted
+                      ? "cursor-not-allowed border border-amber-500/30 bg-amber-500/10 text-amber-400/60"
+                      : "bg-[var(--primary)] text-[var(--primary-foreground)] hover:opacity-90",
+                )}
+                title={janitorNotLoggedIn ? "Click to log in to JanitorAI" : janitorHiddenNotExtracted ? "Extract hidden definitions first" : "Import character"}
               >
-                {importing ? <Loader2 size="0.875rem" className="animate-spin" /> : <Download size="0.875rem" />}
-                {importing ? "Importing..." : "Import"}
+                {importing ? <Loader2 size="0.875rem" className="animate-spin" /> : janitorNotLoggedIn ? <LogIn size="0.875rem" /> : <Download size="0.875rem" />}
+                {importButtonLabel}
+              </button>
+              <button
+                onClick={() => {
+                  if (janitorNotLoggedIn && onShowLogin) {
+                    onShowLogin();
+                  } else if (!downloadDisabled) {
+                    handleDownloadPng();
+                  }
+                }}
+                disabled={downloadDisabled && !janitorNotLoggedIn}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-lg border px-4 py-2 text-xs font-medium transition-all active:scale-95 disabled:opacity-50",
+                  janitorNotLoggedIn
+                    ? "cursor-pointer border-amber-500/30 bg-amber-500/10 text-amber-400 hover:bg-amber-500/20"
+                    : janitorHiddenNotExtracted
+                      ? "cursor-not-allowed border-amber-500/30 bg-amber-500/10 text-amber-400/60"
+                      : "border-[var(--border)] bg-[var(--secondary)] text-[var(--foreground)] hover:bg-[var(--accent)]",
+                )}
+                title={janitorNotLoggedIn ? "Click to log in to JanitorAI" : janitorHiddenNotExtracted ? "Extract hidden definitions first" : "Download as PNG character card"}
+              >
+                {downloading ? <Loader2 size="0.75rem" className="animate-spin" /> : janitorNotLoggedIn ? <LogIn size="0.75rem" /> : <Download size="0.75rem" />}
+                {downloadButtonLabel}
               </button>
               <div className="flex flex-col gap-1 rounded-lg bg-[var(--secondary)] p-2.5 text-xs text-pink-400/80">
                 {card.stat1 > 0 && card.stat1Label && (
@@ -2855,6 +2970,141 @@ function DetailView({
 // ════════════════════════════════════════════════
 // Definition Section
 // ════════════════════════════════════════════════
+
+// ════════════════════════════════════════════════
+// PNG Character Card Builder
+// ════════════════════════════════════════════════
+
+/** Build a SillyTavern-compatible PNG character card with embedded V2 JSON in a tEXt chunk. */
+async function buildCharacterCardPng(
+  avatarUrl: string,
+  charData: Record<string, unknown>,
+): Promise<Blob> {
+  // Step 1: Fetch avatar and draw to canvas to get raw PNG bytes
+  const img = new Image();
+  img.crossOrigin = "anonymous";
+  await new Promise<void>((resolve, reject) => {
+    img.onload = () => resolve();
+    img.onerror = () => reject(new Error("Failed to load avatar image"));
+    img.src = avatarUrl;
+  });
+  const canvas = document.createElement("canvas");
+  canvas.width = img.naturalWidth;
+  canvas.height = img.naturalHeight;
+  const ctx = canvas.getContext("2d")!;
+  ctx.drawImage(img, 0, 0);
+  const pngBlob = await new Promise<Blob>((resolve, reject) => {
+    canvas.toBlob((b) => (b ? resolve(b) : reject(new Error("Canvas toBlob failed"))), "image/png");
+  });
+  const pngBuf = new Uint8Array(await pngBlob.arrayBuffer());
+
+  // Step 2: Build the V2 character card JSON
+  const v2Card = {
+    spec: "chara_card_v2",
+    spec_version: "2.0",
+    data: {
+      name: charData.name || "",
+      description: charData.description || "",
+      personality: charData.personality || "",
+      scenario: charData.scenario || "",
+      first_mes: charData.first_mes || "",
+      mes_example: charData.mes_example || "",
+      creator_notes: charData.creator_notes || "",
+      system_prompt: "",
+      post_history_instructions: "",
+      tags: charData.tags || [],
+      creator: charData.creator || "",
+      character_version: "",
+      alternate_greetings: charData.alternate_greetings || [],
+      extensions: charData.extensions || {},
+    },
+  };
+
+  // Step 3: Encode JSON as base64
+  const jsonStr = JSON.stringify(v2Card);
+  const jsonBytes = new TextEncoder().encode(jsonStr);
+  // Manual base64 encode that handles UTF-8 properly
+  let binary = "";
+  for (let i = 0; i < jsonBytes.length; i++) binary += String.fromCharCode(jsonBytes[i]);
+  const b64 = btoa(binary);
+
+  // Step 4: Build tEXt chunk: keyword("chara") + null byte + base64 text
+  const keyword = new TextEncoder().encode("chara");
+  const textData = new TextEncoder().encode(b64);
+  const chunkPayload = new Uint8Array(keyword.length + 1 + textData.length);
+  chunkPayload.set(keyword, 0);
+  chunkPayload[keyword.length] = 0; // null separator
+  chunkPayload.set(textData, keyword.length + 1);
+
+  // Step 5: Calculate CRC32 for the chunk (type + data)
+  const typeBytes = new TextEncoder().encode("tEXt");
+  const crcInput = new Uint8Array(typeBytes.length + chunkPayload.length);
+  crcInput.set(typeBytes, 0);
+  crcInput.set(chunkPayload, typeBytes.length);
+  const crc = crc32(crcInput);
+
+  // Step 6: Build the full chunk (length + type + data + crc)
+  const chunkLength = chunkPayload.length;
+  const fullChunk = new Uint8Array(4 + 4 + chunkLength + 4);
+  // Length (big-endian)
+  fullChunk[0] = (chunkLength >> 24) & 0xff;
+  fullChunk[1] = (chunkLength >> 16) & 0xff;
+  fullChunk[2] = (chunkLength >> 8) & 0xff;
+  fullChunk[3] = chunkLength & 0xff;
+  // Type
+  fullChunk.set(typeBytes, 4);
+  // Data
+  fullChunk.set(chunkPayload, 8);
+  // CRC (big-endian)
+  fullChunk[8 + chunkLength] = (crc >> 24) & 0xff;
+  fullChunk[9 + chunkLength] = (crc >> 16) & 0xff;
+  fullChunk[10 + chunkLength] = (crc >> 8) & 0xff;
+  fullChunk[11 + chunkLength] = crc & 0xff;
+
+  // Step 7: Insert chunk before IEND in the PNG
+  // Find IEND chunk (last 12 bytes typically: length(4) + "IEND"(4) + crc(4))
+  let iendOffset = -1;
+  for (let i = pngBuf.length - 12; i >= 8; i--) {
+    if (pngBuf[i + 4] === 0x49 && pngBuf[i + 5] === 0x45 && pngBuf[i + 6] === 0x4e && pngBuf[i + 7] === 0x44) {
+      iendOffset = i;
+      break;
+    }
+  }
+  if (iendOffset === -1) throw new Error("Could not find IEND chunk in PNG");
+
+  // Build final PNG: everything before IEND + our tEXt chunk + IEND
+  const beforeIend = pngBuf.slice(0, iendOffset);
+  const iendChunk = pngBuf.slice(iendOffset);
+  const finalPng = new Uint8Array(beforeIend.length + fullChunk.length + iendChunk.length);
+  finalPng.set(beforeIend, 0);
+  finalPng.set(fullChunk, beforeIend.length);
+  finalPng.set(iendChunk, beforeIend.length + fullChunk.length);
+
+  return new Blob([finalPng], { type: "image/png" });
+}
+
+/** CRC32 implementation for PNG chunk checksums */
+function crc32(data: Uint8Array): number {
+  let crc = 0xffffffff;
+  // Build table on first call
+  if (!crc32.table) {
+    crc32.table = new Uint32Array(256);
+    for (let n = 0; n < 256; n++) {
+      let c = n;
+      for (let k = 0; k < 8; k++) {
+        c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
+      }
+      crc32.table[n] = c;
+    }
+  }
+  for (let i = 0; i < data.length; i++) {
+    crc = crc32.table[(crc ^ data[i]) & 0xff] ^ (crc >>> 8);
+  }
+  return (crc ^ 0xffffffff) >>> 0;
+}
+crc32.table = null as Uint32Array | null;
+
+
 
 function DefSection({ title, content }: { title: string; content: string }) {
   return (

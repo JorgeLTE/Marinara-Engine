@@ -43,6 +43,22 @@ function MainPaneFallback() {
     <div className="flex flex-1 items-center justify-center text-sm text-[var(--muted-foreground)]">Loading...</div>
   );
 }
+/** Keeps BotBrowserView mounted (hidden via CSS) once it's been opened at least once, so state persists. */
+function BotBrowserPersistent({ open }: { open: boolean }) {
+  const [everOpened, setEverOpened] = useState(false);
+  useEffect(() => {
+    if (open && !everOpened) setEverOpened(true);
+  }, [open, everOpened]);
+  if (!everOpened) return null;
+  return (
+    <div className={open ? "flex flex-1 flex-col overflow-hidden" : "hidden"}>
+      <Suspense fallback={<MainPaneFallback />}>
+        <BotBrowserView />
+      </Suspense>
+    </div>
+  );
+}
+
 
 function SidePanelFallback() {
   return (
@@ -152,9 +168,7 @@ export function AppShell() {
   const botBrowserOpen = useUIStore((s) => s.botBrowserOpen);
   const hasCompletedOnboarding = useUIStore((s) => s.hasCompletedOnboarding);
 
-  const detailView = botBrowserOpen ? (
-    <BotBrowserView />
-  ) : regexDetailId ? (
+  const detailView = regexDetailId ? (
     <RegexScriptEditor />
   ) : personaDetailId ? (
     <PersonaEditor />
@@ -220,7 +234,11 @@ export function AppShell() {
         className="@container mari-main relative flex min-w-0 flex-1 flex-col overflow-hidden"
       >
         <TopBar />
-        <Suspense fallback={<MainPaneFallback />}>{detailView ?? <ChatArea />}</Suspense>
+        {/* Bot Browser — kept mounted once opened so state persists across close/reopen */}
+        <BotBrowserPersistent open={botBrowserOpen} />
+        <div className={botBrowserOpen ? "hidden" : "flex flex-1 flex-col overflow-hidden"}>
+          <Suspense fallback={<MainPaneFallback />}>{detailView ?? <ChatArea />}</Suspense>
+        </div>
         {/* Floating avatar notification bubbles (right edge) */}
         <ChatNotificationBubbles />
       </main>
