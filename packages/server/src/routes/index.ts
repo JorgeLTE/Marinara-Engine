@@ -38,6 +38,8 @@ import { botBrowserPygmalionRoutes } from "./bot-browser-pygmalion.routes.js";
 import { botBrowserWyvernRoutes } from "./bot-browser-wyvern.routes.js";
 import { chatFoldersRoutes } from "./chat-folders.routes.js";
 import { updatesRoutes } from "./updates.routes.js";
+import { extProxyRoutes } from "./ext-proxy.routes.js";
+
 
 export async function registerRoutes(app: FastifyInstance) {
   await app.register(chatsRoutes, { prefix: "/api/chats" });
@@ -76,4 +78,6 @@ export async function registerRoutes(app: FastifyInstance) {
   await app.register(botBrowserPygmalionRoutes, { prefix: "/api/bot-browser" });
   await app.register(botBrowserWyvernRoutes, { prefix: "/api/bot-browser" });
   await app.register(updatesRoutes, { prefix: "/api/updates" });
+  await app.register(extProxyRoutes, { prefix: "/api/ext" });
+
 }

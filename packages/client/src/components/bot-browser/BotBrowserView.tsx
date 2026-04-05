@@ -866,7 +866,7 @@ const wyvernProvider: ProviderConfig = {
 // Provider Registry
 // ════════════════════════════════════════════════
 
-const ALL_PROVIDERS: ProviderConfig[] = [
+const BUILT_IN_PROVIDERS: ProviderConfig[] = [
   chubProvider,
   jannyProvider,
   chartavernProvider,
@@ -874,9 +874,43 @@ const ALL_PROVIDERS: ProviderConfig[] = [
   wyvernProvider,
 ];
 
+/** Global registry for extension-added bot browser providers */
+const _extProviders: ProviderConfig[] = [];
+let _extProviderListeners: Array<() => void> = [];
+
+/** Register a new bot browser provider from an extension. Returns an unregister function. */
+function registerBotBrowserProvider(config: ProviderConfig): () => void {
+  // Prevent duplicates
+  const existing = _extProviders.findIndex((p) => p.id === config.id);
+  if (existing >= 0) _extProviders.splice(existing, 1);
+  _extProviders.push(config);
+  _extProviderListeners.forEach((fn) => fn());
+  return () => {
+    const idx = _extProviders.indexOf(config);
+    if (idx >= 0) _extProviders.splice(idx, 1);
+    _extProviderListeners.forEach((fn) => fn());
+  };
+}
+
+// Expose globally for extensions
+(window as any).__marinara_registerBotBrowserProvider = registerBotBrowserProvider;
+
+/** Hook to get all providers (built-in + extension) reactively */
+function useAllProviders(): ProviderConfig[] {
+  const [, forceUpdate] = useState(0);
+  useEffect(() => {
+    const listener = () => forceUpdate((n) => n + 1);
+    _extProviderListeners.push(listener);
+    return () => {
+      _extProviderListeners = _extProviderListeners.filter((l) => l !== listener);
+    };
+  }, []);
+  return [...BUILT_IN_PROVIDERS, ..._extProviders];
+}
 
 function getProvider(id: string): ProviderConfig {
-  return ALL_PROVIDERS.find((p) => p.id === id) ?? chubProvider;
+  const all = [...BUILT_IN_PROVIDERS, ..._extProviders];
+  return all.find((p) => p.id === id) ?? chubProvider;
 }
 
 // ════════════════════════════════════════════════
@@ -890,6 +924,8 @@ export function BotBrowserView() {
   const [sourceId, setSourceId] = useState("chub");
   const [sourceOpen, setSourceOpen] = useState(false);
   const provider = useMemo(() => getProvider(sourceId), [sourceId]);
+  const allProviders = useAllProviders();
+
 
   const [query, setQuery] = useState("");
   const [sort, setSort] = useState(provider.defaultSort);
@@ -1341,7 +1377,7 @@ export function BotBrowserView() {
           </button>
           {sourceOpen && (
             <div className="absolute left-0 top-full z-50 mt-1 min-w-[180px] overflow-hidden rounded-lg border border-[var(--border)] bg-[var(--card)] shadow-xl">
-              {ALL_PROVIDERS.map((p) => (
+              {allProviders.map((p) => (
                 <button
                   key={p.id}
                   onClick={() => switchProvider(p.id)}

@@ -148,6 +148,19 @@ export function CustomThemeInjector() {
           onCleanup: (fn: () => void) => {
             extensionCleanups.push(fn);
           },
+		  
+          // Register a bot browser provider (for browser extensions)
+          registerBotBrowserProvider: (config: any) => {
+            const register = (window as any).__marinara_registerBotBrowserProvider;
+            if (typeof register === "function") {
+              const unregister = register(config);
+              extensionCleanups.push(unregister);
+              return unregister;
+            }
+            console.warn(`[Extension:${ext.name}] registerBotBrowserProvider not available yet`);
+            return () => {};
+          },
+
         };
 
         // Execute the JS with the marinara API available
