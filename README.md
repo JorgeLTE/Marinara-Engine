@@ -137,7 +137,7 @@ Install [Termux](https://f-droid.org/en/packages/com.termux/) from F-Droid (the 
 pkg update && pkg install -y git nodejs-lts && git clone https://github.com/SpicyMarinara/marinara-engine.git && cd marinara-engine && chmod +x start-termux.sh && ./start-termux.sh
 ```
 
-The Termux launcher downloads the prebuilt SQLite native module when available, installs dependencies, builds the app, and starts the server at `http://localhost:<PORT>` using the resolved `PORT` value from `.env` or the default `7860`. First run takes a few minutes on mobile. After that, run `./start-termux.sh` to start again.
+The Termux launcher downloads the prebuilt SQLite native module when available, installs dependencies, builds the app, and starts the server at `http://127.0.0.1:<PORT>` using the resolved `PORT` value from `.env` or the default `7860`. First run takes a few minutes on mobile. After that, run `./start-termux.sh` to start again.
 
 If you also want a dedicated Android app shell, see [android/README.md](android/README.md). The APK is a WebView wrapper around the Termux-served app; it does not replace the server.
 
@@ -150,7 +150,7 @@ When started from a git checkout, the shell launchers will:
 3. Install all dependencies on first run
 4. Build the application
 5. Ensure the database schema is up to date
-6. Load `.env`, resolve the final local URL, start the server, and open `http://localhost:<PORT>` in your browser by default
+6. Load `.env`, resolve the final local URL, start the server, and open `http://127.0.0.1:<PORT>` in your browser by default
 
 Set `AUTO_OPEN_BROWSER=false` in `.env` to skip the automatic browser launch. This applies to the shell launchers (`start.bat`, `start.sh`, and `start-termux.sh`) only. The Android wrapper uses its own WebView.
 
@@ -165,7 +165,7 @@ pnpm db:push
 pnpm start
 ```
 
-Then open **<http://localhost:7860>**. Everything runs locally.
+Then open **<http://127.0.0.1:7860>**. Everything runs locally.
 
 Bare `pnpm start` binds to `127.0.0.1` by default. If you want LAN access without using a launcher, set `HOST=0.0.0.0` first.
 
@@ -177,7 +177,7 @@ Bare `pnpm start` binds to `127.0.0.1` by default. If you want LAN access withou
 docker compose up -d
 ```
 
-Then open **<http://localhost:7860>**.
+Then open **<http://127.0.0.1:7860>**.
 
 Data (SQLite database, uploads, fonts, default backgrounds) is stored in the named volume `marinara-data`. To inspect it:
 

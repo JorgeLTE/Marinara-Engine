@@ -254,7 +254,7 @@ fi
 # ── Start ──
 echo ""
 echo "  ══════════════════════════════════════════"
-echo "    Starting Marinara Engine on ${PROTOCOL}://localhost:${PORT}"
+echo "    Starting Marinara Engine on ${PROTOCOL}://127.0.0.1:${PORT}"
 if [ -n "$LOCAL_IP" ]; then
 echo "    LAN access: ${PROTOCOL}://${LOCAL_IP}:${PORT}"
 fi
@@ -266,7 +266,7 @@ echo ""
 
 # Open in Termux browser if available (no-op if not)
 if [ "$AUTO_OPEN_BROWSER_ENABLED" = "1" ] && command -v termux-open-url &> /dev/null; then
-    (sleep 3 && termux-open-url "${PROTOCOL}://localhost:${PORT}") &
+    (sleep 3 && termux-open-url "${PROTOCOL}://127.0.0.1:${PORT}") &
 elif [ "$AUTO_OPEN_BROWSER_ENABLED" != "1" ]; then
     echo "  [OK] Auto-open disabled (AUTO_OPEN_BROWSER=${AUTO_OPEN_BROWSER_VALUE})"
 fi

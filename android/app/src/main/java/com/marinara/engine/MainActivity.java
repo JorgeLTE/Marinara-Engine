@@ -115,7 +115,7 @@ public class MainActivity extends Activity {
             @Override
             public boolean shouldOverrideUrlLoading(WebView view, WebResourceRequest request) {
                 String url = request.getUrl().toString();
-                // Keep localhost navigation inside the WebView
+                // Keep loopback navigation inside the WebView
                 if (url.startsWith("http://localhost") || url.startsWith("http://127.0.0.1")) {
                     return false;
                 }

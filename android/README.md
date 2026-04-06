@@ -5,7 +5,7 @@ The Android app is a thin WebView wrapper around Marinara Engine running locally
 ## How It Works
 
 - Start Marinara Engine in Termux with `./start-termux.sh`.
-- The APK opens `http://localhost:<PORT>` inside a fullscreen WebView. The default build-time port is `7860`.
+- The APK opens `http://127.0.0.1:<PORT>` inside a fullscreen WebView. The default build-time port is `7860`.
 - The server, launcher updates, and `AUTO_OPEN_BROWSER` behavior are owned by the Termux launcher, not by this APK.
 - Release and versioning policy follows the main repo docs in [../CONTRIBUTING.md](../CONTRIBUTING.md): root `package.json` is canonical, Android `versionName` should match the app version, and `versionCode` must increase for every shipped APK.
 - If you build the APK with a non-default port, Termux must use the same `PORT` value in `.env`.
@@ -85,7 +85,7 @@ cd android
 2. Open the **Marinara Engine** app from your home screen.
 3. The app shows "Connecting..." until the local server is ready, then loads automatically.
 
-Because the APK points at `http://localhost:<PORT>`, it only works while the Marinara Engine server is running on the same Android device and using the same port value.
+Because the APK points at `http://127.0.0.1:<PORT>`, it only works while the Marinara Engine server is running on the same Android device and using the same port value.
 
 ## Pre-built APKs
 

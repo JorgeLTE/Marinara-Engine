@@ -14,7 +14,7 @@ android {
         targetSdk 34
         versionCode 3
         versionName "1.4.8"
-        buildConfigField "String", "MARINARA_SERVER_URL", "\"http://localhost:${marinaraPort}\""
+        buildConfigField "String", "MARINARA_SERVER_URL", "\"http://127.0.0.1:${marinaraPort}\""
     }
 
     buildTypes {

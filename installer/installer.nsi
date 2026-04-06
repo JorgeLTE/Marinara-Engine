@@ -70,7 +70,7 @@ Your chats, characters, and data will be stored inside this folder."
 !define MUI_FINISHPAGE_TEXT "\
 ${APP_NAME} has been installed successfully.$\r$\n$\r$\n\
 To start the app, double-click the desktop shortcut or select the option below.$\r$\n\
-It will open automatically in your browser at http://localhost:7860$\r$\n$\r$\n\
+It will open automatically in your browser at http://127.0.0.1:7860$\r$\n$\r$\n\
 Future updates: Open Settings in the app and click $\"Check for Updates$\"."
 !define MUI_FINISHPAGE_RUN
 !define MUI_FINISHPAGE_RUN_FUNCTION "LaunchApp"
@@ -351,7 +351,7 @@ Would you like to retry?" IDYES retryInstall IDNO skipRetryInstall
   DetailPrint ""
   DetailPrint "${APP_NAME} v${APP_VERSION} is ready to use."
   DetailPrint 'Launch it from the desktop shortcut or Start Menu.'
-  DetailPrint "It will open in your browser at http://localhost:7860"
+  DetailPrint "It will open in your browser at http://127.0.0.1:7860"
   DetailPrint ""
   DetailPrint "To update in the future: open Settings > Check for Updates"
 SectionEnd

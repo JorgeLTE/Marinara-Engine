@@ -154,14 +154,14 @@ if defined AUTO_OPEN_BROWSER (
 
 echo.
 echo  ==========================================
-echo    Starting Marinara Engine on %PROTOCOL%://localhost:%PORT%
+echo    Starting Marinara Engine on %PROTOCOL%://127.0.0.1:%PORT%
 echo    Press Ctrl+C to stop
 echo  ==========================================
 echo.
 
 :: Open browser after a short delay (use explorer.exe as fallback)
 if defined AUTO_OPEN_BROWSER_ENABLED (
-    start "" cmd /c "timeout /t 4 /nobreak >nul && start %PROTOCOL%://localhost:%PORT% || explorer %PROTOCOL%://localhost:%PORT%"
+    start "" cmd /c "timeout /t 4 /nobreak >nul && start %PROTOCOL%://127.0.0.1:%PORT% || explorer %PROTOCOL%://127.0.0.1:%PORT%"
 ) else (
     echo  [OK] Auto-open disabled ^(AUTO_OPEN_BROWSER=%AUTO_OPEN_BROWSER%^)
 )

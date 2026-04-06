@@ -141,14 +141,14 @@ esac
 
 echo ""
 echo "  ══════════════════════════════════════════"
-echo "    Starting Marinara Engine on ${PROTOCOL}://localhost:$PORT"
+echo "    Starting Marinara Engine on ${PROTOCOL}://127.0.0.1:$PORT"
 echo "    Press Ctrl+C to stop"
 echo "  ══════════════════════════════════════════"
 echo ""
 
 # Open browser after a short delay
 if [ "$AUTO_OPEN_BROWSER_ENABLED" = "1" ]; then
-  (sleep 3 && open "${PROTOCOL}://localhost:$PORT" 2>/dev/null || xdg-open "${PROTOCOL}://localhost:$PORT" 2>/dev/null) &
+  (sleep 3 && open "${PROTOCOL}://127.0.0.1:$PORT" 2>/dev/null || xdg-open "${PROTOCOL}://127.0.0.1:$PORT" 2>/dev/null) &
 else
   echo "  [OK] Auto-open disabled (AUTO_OPEN_BROWSER=${AUTO_OPEN_BROWSER_VALUE})"
 fi
