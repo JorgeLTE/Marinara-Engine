@@ -192,7 +192,7 @@ function renderWithSpeakerTags(
  * Used as a second pass after inline markdown has already been applied.
  */
 function boldDialogueInString(text: string, dialogueColor: string | undefined, keyPrefix: string): ReactNode[] {
-  const regex = /(?:"([^"]+)"|«([^»]+)»|'([^']+)')/g;
+  const regex = /(?:"([^"]+)"|«([^»]+)»)/g;
   const nodes: ReactNode[] = [];
   let lastIndex = 0;
   let match: RegExpExecArray | null;
@@ -203,7 +203,7 @@ function boldDialogueInString(text: string, dialogueColor: string | undefined, k
       nodes.push(text.slice(lastIndex, match.index));
     }
     const fullMatch = match[0];
-    const innerText = match[1] ?? match[2] ?? match[3] ?? "";
+    const innerText = match[1] ?? match[2] ?? "";
     const openQuote = fullMatch[0];
     const closeQuote = fullMatch[fullMatch.length - 1];
 
@@ -228,7 +228,11 @@ function boldDialogueInString(text: string, dialogueColor: string | undefined, k
 }
 
 /**
- * Highlight quoted dialogue — text in "", "", «», or '' gets bold + colored.
+ * Highlight quoted dialogue — text in "" or «» gets bold + colored.
+ *
+ * Single quotes ('') are intentionally excluded because after curly-quote
+ * normalization (' → ') they are indistinguishable from apostrophes,
+ * causing false positives like "it's nice, isn't it" being partially bolded.
  *
  * Applies inline markdown FIRST, then walks the resulting ReactNode array
  * and only applies dialogue bolding to plain-string leaf nodes. This
