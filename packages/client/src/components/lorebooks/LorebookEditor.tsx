@@ -446,6 +446,12 @@ export function LorebookEditor() {
                 onChange={(v) => setEntryForm((f) => (f ? { ...f, caseSensitive: v } : f))}
               />
               <ToggleButton
+                label="Locked"
+                value={entryForm.locked ?? false}
+                onChange={(v) => setEntryForm((f) => (f ? { ...f, locked: v } : f))}
+                tooltip="Prevents the Lorebook Keeper agent from modifying this entry."
+              />
+              <ToggleButton
                 label="No Recursion"
                 value={entryForm.preventRecursion ?? false}
                 onChange={(v) => setEntryForm((f) => (f ? { ...f, preventRecursion: v } : f))}

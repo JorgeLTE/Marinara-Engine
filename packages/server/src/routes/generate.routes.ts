@@ -123,6 +123,12 @@ function formatAgentInjections(injections: AgentInjection[], wrapFormat: string)
   return parts.join("\n\n");
 }
 
+function normalizeChatTopP(value: unknown): number | undefined {
+  if (typeof value !== "number" || !Number.isFinite(value)) return undefined;
+  if (value <= 0) return 1;
+  return Math.min(value, 1);
+}
+
 export async function generateRoutes(app: FastifyInstance) {
   const chats = createChatsStorage(app.db);
   const connections = createConnectionsStorage(app.db);
@@ -1675,7 +1681,7 @@ export async function generateRoutes(app: FastifyInstance) {
       if (chatParams) {
         if (typeof chatParams.temperature === "number") temperature = chatParams.temperature;
         if (typeof chatParams.maxTokens === "number") maxTokens = chatParams.maxTokens;
-        if (typeof chatParams.topP === "number") topP = chatParams.topP;
+        topP = normalizeChatTopP(chatParams.topP) ?? topP;
         if (typeof chatParams.topK === "number") topK = chatParams.topK;
         if (typeof chatParams.frequencyPenalty === "number") frequencyPenalty = chatParams.frequencyPenalty;
         if (typeof chatParams.presencePenalty === "number") presencePenalty = chatParams.presencePenalty;

@@ -36,7 +36,7 @@ export const markerConfigSchema = z.object({
 
 export const generationParametersSchema = z.object({
   temperature: z.number().min(0).max(2).default(1),
-  topP: z.number().min(0).max(1).default(1),
+  topP: z.number().gt(0).max(1).default(1),
   topK: z.number().int().min(0).default(0),
   minP: z.number().min(0).max(1).default(0),
   maxTokens: z.number().int().min(1).default(4096),

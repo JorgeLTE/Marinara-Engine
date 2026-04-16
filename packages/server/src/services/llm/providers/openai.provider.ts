@@ -25,6 +25,12 @@ const RESPONSES_ONLY_SUFFIXES = ["-codex", "-codex-max", "-codex-mini"];
  * Handles OpenAI, OpenRouter, Mistral, Cohere, and any OpenAI-compatible endpoint.
  */
 export class OpenAIProvider extends BaseLLMProvider {
+  private static normalizeTopP(topP: number | null | undefined): number | undefined {
+    if (topP == null || !Number.isFinite(topP)) return undefined;
+    if (topP <= 0) return 1;
+    return Math.min(topP, 1);
+  }
+
   /**
    * Extract text and thinking from an OpenRouter/Anthropic-style content block array.
    * OpenRouter may return `content` as an array of typed blocks instead of a plain string:
@@ -182,7 +188,8 @@ export class OpenAIProvider extends BaseLLMProvider {
     // o-series models never support temperature/topP; GPT-5.x only with effort=none
     if (!this.isNoTemperatureModel(options.model, options.reasoningEffort)) {
       body.temperature = options.temperature ?? 1;
-      if (options.topP != null) body.top_p = options.topP;
+      const topP = OpenAIProvider.normalizeTopP(options.topP);
+      if (topP != null) body.top_p = topP;
       if (options.frequencyPenalty) body.frequency_penalty = options.frequencyPenalty;
       if (options.presencePenalty) body.presence_penalty = options.presencePenalty;
     }
@@ -363,7 +370,8 @@ export class OpenAIProvider extends BaseLLMProvider {
     // o-series models never support temperature/topP; GPT-5.x only with effort=none
     if (!this.isNoTemperatureModel(options.model, options.reasoningEffort)) {
       body.temperature = options.temperature ?? 1;
-      if (options.topP != null) body.top_p = options.topP;
+      const topP = OpenAIProvider.normalizeTopP(options.topP);
+      if (topP != null) body.top_p = topP;
       if (options.frequencyPenalty) body.frequency_penalty = options.frequencyPenalty;
       if (options.presencePenalty) body.presence_penalty = options.presencePenalty;
     }
@@ -719,7 +727,8 @@ export class OpenAIProvider extends BaseLLMProvider {
     // o-series models never support temperature/topP; GPT-5.x only with effort=none
     if (!this.isNoTemperatureModel(options.model, options.reasoningEffort)) {
       if (options.temperature != null) body.temperature = options.temperature;
-      if (options.topP != null) body.top_p = options.topP;
+      const topP = OpenAIProvider.normalizeTopP(options.topP);
+      if (topP != null) body.top_p = topP;
       if (options.frequencyPenalty) body.frequency_penalty = options.frequencyPenalty;
       if (options.presencePenalty) body.presence_penalty = options.presencePenalty;
     }
