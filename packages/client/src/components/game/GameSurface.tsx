@@ -1283,9 +1283,13 @@ export function GameSurface({
       ].filter((t): t is string => !!t && t !== "black" && t !== "none");
 
       const unresolvedBg = allBgTags.find((t) => !manifest.assets[t]);
+      // Pre-cache portraits for any tracked named NPC with a description, even if not
+      // met yet — by the time the party encounters them their avatar is ready, and the
+      // /generate-assets schema already caps this at 10 per turn so cost stays bounded.
       const npcsNeedingAvatars = npcs
-        .filter((n) => n.met && !n.avatarUrl && n.description)
-        .map((n) => ({ name: n.name, description: n.description }));
+        .filter((n) => !n.avatarUrl && n.description && n.name)
+        .map((n) => ({ name: n.name, description: n.description }))
+        .slice(0, 10);
 
       if (unresolvedBg || npcsNeedingAvatars.length > 0) {
         const assetPayload = {
