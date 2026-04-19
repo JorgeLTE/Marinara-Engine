@@ -35,6 +35,7 @@ export interface NpcPortraitRequest {
   imgModel: string;
   imgBaseUrl: string;
   imgApiKey: string;
+  imgService: string;
 }
 
 /**
@@ -60,7 +61,7 @@ export async function generateNpcPortrait(req: NpcPortraitRequest): Promise<stri
     );
 
   try {
-    const result = await generateImage(req.imgModel, req.imgBaseUrl, req.imgApiKey, {
+    const result = await generateImage(req.imgModel, req.imgBaseUrl, req.imgApiKey, req.imgService, {
       prompt,
       model: req.imgModel,
       width: 512,
@@ -105,6 +106,7 @@ export interface BackgroundGenRequest {
   imgModel: string;
   imgBaseUrl: string;
   imgApiKey: string;
+  imgService: string;
 }
 
 /**
@@ -136,7 +138,7 @@ export async function generateBackground(req: BackgroundGenRequest): Promise<str
     );
 
   try {
-    const result = await generateImage(req.imgModel, req.imgBaseUrl, req.imgApiKey, {
+    const result = await generateImage(req.imgModel, req.imgBaseUrl, req.imgApiKey, req.imgService, {
       prompt,
       model: req.imgModel,
       width: 1024,

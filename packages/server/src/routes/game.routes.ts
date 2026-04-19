@@ -2231,6 +2231,7 @@ export async function gameRoutes(app: FastifyInstance) {
             const imgModel = imgConn.model || "";
             const imgBaseUrl = imgConn.baseUrl || "https://image.pollinations.ai";
             const imgApiKey = imgConn.apiKey || "";
+            const imgServiceHint = imgConn.imageService || "";
 
             const setupCfg = meta.gameSetupConfig as Record<string, unknown> | null;
             const genre = (setupCfg?.genre as string) || "";
@@ -2274,6 +2275,7 @@ export async function gameRoutes(app: FastifyInstance) {
                   imgModel,
                   imgBaseUrl,
                   imgApiKey,
+                  imgService: imgServiceHint,
                 });
 
                 if (generatedTag) {
@@ -2321,6 +2323,7 @@ export async function gameRoutes(app: FastifyInstance) {
                   imgModel,
                   imgBaseUrl,
                   imgApiKey,
+                  imgService: imgServiceHint,
                 });
 
                 if (generatedTag) {
@@ -2457,6 +2460,7 @@ export async function gameRoutes(app: FastifyInstance) {
     const imgModel = imgConn.model || "";
     const imgBaseUrl = imgConn.baseUrl || "https://image.pollinations.ai";
     const imgApiKey = imgConn.apiKey || "";
+    const imgServiceHint = imgConn.imageService || "";
 
     const setupCfg = meta.gameSetupConfig as Record<string, unknown> | null;
     const genre = (setupCfg?.genre as string) || "";
@@ -2486,6 +2490,7 @@ export async function gameRoutes(app: FastifyInstance) {
         imgModel,
         imgBaseUrl,
         imgApiKey,
+        imgService: imgServiceHint,
       });
       generatedBackground = tag;
     }
@@ -2521,6 +2526,7 @@ export async function gameRoutes(app: FastifyInstance) {
           imgModel,
           imgBaseUrl,
           imgApiKey,
+          imgService: imgServiceHint,
         });
         if (avatarUrl) {
           generatedNpcAvatars.push({ name: npc.name, avatarUrl });

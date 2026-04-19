@@ -39,6 +39,8 @@ export interface APIConnection {
   openrouterProvider: string | null;
   /** ComfyUI workflow JSON for image generation */
   comfyuiWorkflow: string | null;
+  /** Explicitly selected image generation service ID (e.g. "comfyui", "automatic1111"). Overrides URL inference when set. */
+  imageService: string | null;
   /** Default generation parameters for new chats using this connection (JSON) */
   defaultParameters: string | null;
   createdAt: string;

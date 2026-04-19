@@ -31,6 +31,8 @@ export const apiConnections = sqliteTable("api_connections", {
   openrouterProvider: text("openrouter_provider"),
   /** ComfyUI: custom workflow JSON with placeholders (%prompt%, %width%, etc.) */
   comfyuiWorkflow: text("comfyui_workflow"),
+  /** Image generation: explicitly selected service ID (e.g. "comfyui", "automatic1111"). Overrides URL inference. */
+  imageService: text("image_service"),
   /** Default generation parameters (stored as JSON) for new chats using this connection */
   defaultParameters: text("default_parameters"),
   createdAt: text("created_at").notNull(),

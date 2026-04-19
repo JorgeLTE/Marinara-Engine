@@ -89,6 +89,7 @@ export function ConnectionEditor() {
   const [localEmbeddingConnectionId, setLocalEmbeddingConnectionId] = useState("");
   const [localOpenrouterProvider, setLocalOpenrouterProvider] = useState("");
   const [localComfyuiWorkflow, setLocalComfyuiWorkflow] = useState("");
+  const [localImageService, setLocalImageService] = useState<string | null>(null);
 
   // Test results
   const [testResult, setTestResult] = useState<{ success: boolean; message: string; latencyMs: number } | null>(null);
@@ -165,6 +166,7 @@ export function ConnectionEditor() {
     setLocalEmbeddingConnectionId((c.embeddingConnectionId as string) ?? "");
     setLocalOpenrouterProvider((c.openrouterProvider as string) ?? "");
     setLocalComfyuiWorkflow((c.comfyuiWorkflow as string) ?? "");
+    setLocalImageService((c.imageService as string | null) ?? null);
     setDirty(false);
     setSaveError(null);
     setTestResult(null);
@@ -227,6 +229,7 @@ export function ConnectionEditor() {
       embeddingConnectionId: localEmbeddingConnectionId || null,
       openrouterProvider: localOpenrouterProvider || null,
       comfyuiWorkflow: localComfyuiWorkflow || null,
+      imageService: localImageService || null,
     };
     // Only send API key if user typed a new one
     if (localApiKey.trim()) {
@@ -255,6 +258,7 @@ export function ConnectionEditor() {
     localEmbeddingConnectionId,
     localOpenrouterProvider,
     localComfyuiWorkflow,
+    localImageService,
     updateConnection,
   ]);
 
@@ -635,11 +639,12 @@ export function ConnectionEditor() {
             >
               <div className="grid grid-cols-2 gap-1.5">
                 {IMAGE_GENERATION_SOURCES.map((src) => {
-                  const isActive = localBaseUrl === src.defaultBaseUrl;
+                  const isActive = localImageService ? localImageService === src.id : localBaseUrl === src.defaultBaseUrl;
                   return (
                     <button
                       key={src.id}
                       onClick={() => {
+                        setLocalImageService(src.id);
                         setLocalBaseUrl(src.defaultBaseUrl);
                         markDirty();
                       }}
@@ -906,7 +911,9 @@ export function ConnectionEditor() {
 
           {/* ── ComfyUI Workflow ── */}
           {localProvider === "image_generation" &&
-            (localBaseUrl.includes(":8188") || localBaseUrl.toLowerCase().includes("comfyui")) && (
+            (localImageService === "comfyui" ||
+              (!localImageService &&
+                (localBaseUrl.includes(":8188") || localBaseUrl.toLowerCase().includes("comfyui")))) && (
               <FieldGroup
                 label="ComfyUI Workflow (Optional)"
                 icon={<Zap size="0.875rem" className="text-sky-400" />}

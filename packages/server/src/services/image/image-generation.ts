@@ -54,11 +54,12 @@ export async function generateImage(
   source: string,
   baseUrl: string,
   apiKey: string,
+  serviceHint: string,
   request: ImageGenRequest,
 ): Promise<ImageGenResult> {
   // Infer the source from model name / base URL if the source looks like a legacy service ID
-  // or if the caller passes a model name as source
-  const resolvedSource = inferImageSource(source, baseUrl);
+  // or if the caller passes a model name as source. An explicit serviceHint overrides inference.
+  const resolvedSource = serviceHint || inferImageSource(source, baseUrl);
   switch (resolvedSource) {
     case "openai":
     case "nanogpt":

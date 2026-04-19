@@ -84,6 +84,7 @@ export function createConnectionsStorage(db: DB) {
         embeddingConnectionId: input.embeddingConnectionId ?? null,
         openrouterProvider: input.openrouterProvider ?? null,
         comfyuiWorkflow: input.comfyuiWorkflow ?? null,
+        imageService: input.imageService ?? null,
         createdAt: timestamp,
         updatedAt: timestamp,
       });
@@ -150,6 +151,9 @@ export function createConnectionsStorage(db: DB) {
       if (data.comfyuiWorkflow !== undefined) {
         updateFields.comfyuiWorkflow = data.comfyuiWorkflow;
       }
+      if (data.imageService !== undefined) {
+        updateFields.imageService = data.imageService;
+      }
       await db.update(apiConnections).set(updateFields).where(eq(apiConnections.id, id));
       return this.getById(id);
     },
@@ -178,6 +182,7 @@ export function createConnectionsStorage(db: DB) {
         openrouterProvider: source.openrouterProvider,
         embeddingBaseUrl: source.embeddingBaseUrl,
         comfyuiWorkflow: source.comfyuiWorkflow,
+        imageService: source.imageService,
         createdAt: timestamp,
         updatedAt: timestamp,
       });

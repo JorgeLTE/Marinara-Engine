@@ -31,6 +31,7 @@ export const createConnectionSchema = z.object({
   embeddingConnectionId: z.string().nullable().default(null),
   openrouterProvider: z.string().nullable().default(null),
   comfyuiWorkflow: z.string().nullable().default(null),
+  imageService: z.string().nullable().default(null),
 });
 
 export type CreateConnectionInput = z.infer<typeof createConnectionSchema>;

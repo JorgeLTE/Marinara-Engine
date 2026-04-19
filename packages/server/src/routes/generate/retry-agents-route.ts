@@ -618,6 +618,7 @@ async function applyRetryResultEffects(args: {
               const imgModel = imgConnFull.model || "";
               const imgBaseUrl = imgConnFull.baseUrl || "https://image.pollinations.ai";
               const imgApiKey = imgConnFull.apiKey || "";
+              const imgServiceHint = imgConnFull.imageService || "";
 
               const chatMeta = typeof chat.metadata === "string" ? JSON.parse(chat.metadata) : (chat.metadata ?? {});
               const selfieRes = (chatMeta.selfieResolution as string) ?? "";
@@ -694,7 +695,7 @@ async function applyRetryResultEffects(args: {
                 }
               }
 
-              const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, {
+              const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, imgServiceHint, {
                 prompt: fullPrompt,
                 negativePrompt: negativePrompt || undefined,
                 model: imgModel,

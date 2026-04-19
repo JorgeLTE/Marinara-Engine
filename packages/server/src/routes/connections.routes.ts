@@ -83,6 +83,7 @@ export async function connectionsRoutes(app: FastifyInstance) {
         headers[provider.apiKeyHeader] = conn.apiKey;
       }
 
+      const imageService  = conn.imageService;
       // image_generation has no standard modelsEndpoint — use provider-specific checks
       let testUrl: string;
       if (conn.provider === "image_generation" && baseUrl.toLowerCase().includes("novelai.net")) {
@@ -90,11 +91,11 @@ export async function connectionsRoutes(app: FastifyInstance) {
         testUrl = "https://api.novelai.net/user/subscription";
       } else if (
         conn.provider === "image_generation" &&
-        (baseUrl.includes(":8188") || baseUrl.toLowerCase().includes("comfyui"))
+        (imageService === "comfyui" || (!imageService && (baseUrl.includes(":8188") || (baseUrl.toLowerCase().includes("comfyui")))))
       ) {
         // ComfyUI: ping the system stats endpoint
         testUrl = `${baseUrl}/system_stats`;
-      } else if (conn.provider === "image_generation" && baseUrl.includes(":7860")) {
+      } else if (conn.provider === "image_generation" && (imageService === "automatic1111" || (!imageService && baseUrl.includes(":7860")))) {
         // AUTOMATIC1111 / SD Web UI: ping the internal ping endpoint
         testUrl = `${baseUrl}/sdapi/v1/options`;
       } else {
@@ -160,9 +161,10 @@ export async function connectionsRoutes(app: FastifyInstance) {
         }
         return body.slice(0, 300);
       };
+      const imageService = conn.imageService;
 
       // ComfyUI: fetch checkpoints from object_info
-      if (conn.provider === "image_generation" && (lowerBase.includes(":8188") || lowerBase.includes("comfyui"))) {
+      if (conn.provider === "image_generation" && (imageService === "comfyui" || lowerBase.includes(":8188") || lowerBase.includes("comfyui"))) {
         const res = await fetch(`${baseUrl}/object_info/CheckpointLoaderSimple`);
         if (!res.ok) {
           return reply.status(502).send({ error: `ComfyUI returned ${res.status}` });
@@ -175,7 +177,7 @@ export async function connectionsRoutes(app: FastifyInstance) {
       }
 
       // AUTOMATIC1111 / SD Web UI: fetch models from /sdapi/v1/sd-models
-      if (conn.provider === "image_generation" && lowerBase.includes(":7860")) {
+      if (conn.provider === "image_generation" && (imageService === "automatic1111" || (!imageService && lowerBase.includes(":7860")))) {
         const res = await fetch(`${baseUrl}/sdapi/v1/sd-models`);
         if (!res.ok) {
           return reply.status(502).send({ error: `SD Web UI returned ${res.status}` });

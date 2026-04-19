@@ -4866,6 +4866,7 @@ export async function generateRoutes(app: FastifyInstance) {
                       const imgModel = imgConnFull.model || "";
                       const imgBaseUrl = imgConnFull.baseUrl || "https://image.pollinations.ai";
                       const imgApiKey = imgConnFull.apiKey || "";
+                      const imgServiceHint = imgConnFull.imageService || "";
 
                       for (const npc of charsNeedingAvatars) {
                         try {
@@ -4878,7 +4879,7 @@ export async function generateRoutes(app: FastifyInstance) {
                               1000,
                             );
 
-                          const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, {
+                          const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, imgServiceHint, {
                             prompt,
                             model: imgModel,
                             width: 512,
@@ -5363,6 +5364,7 @@ export async function generateRoutes(app: FastifyInstance) {
                     const imgModel = imgConnFull.model || "";
                     const imgBaseUrl = imgConnFull.baseUrl || "https://image.pollinations.ai";
                     const imgApiKey = imgConnFull.apiKey || "";
+                    const imgServiceHint = imgConnFull.imageService || "";
 
                     // Use selfie resolution from chat metadata if set, otherwise fall back to aspect ratio defaults
                     const selfieRes = (chatMeta.selfieResolution as string) ?? "";
@@ -5461,13 +5463,13 @@ export async function generateRoutes(app: FastifyInstance) {
                       }
                     }
 
-                    const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, {
+                    const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, imgServiceHint, {
                       prompt: fullPrompt,
                       negativePrompt: negativePrompt || undefined,
                       model: imgModel,
                       width: imgWidth,
                       height: imgHeight,
-                      comfyWorkflow: (imgConnFull as any).comfyuiWorkflow || undefined,
+                      comfyWorkflow: imgConnFull.comfyuiWorkflow || undefined,
                       referenceImage: illustratorRefImage,
                       referenceImages: illustratorRefImages,
                     });
@@ -5848,12 +5850,13 @@ export async function generateRoutes(app: FastifyInstance) {
                     const selfieRes = (chatMeta.selfieResolution as string) ?? "512x768";
                     const [selfieW, selfieH] = selfieRes.split("x").map(Number) as [number, number];
 
-                    const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, {
+                    const serviceHint = imgConnFull.imageService || "";
+                    const imageResult = await generateImage(imgModel, imgBaseUrl, imgApiKey, serviceHint, {
                       prompt: imagePrompt,
                       model: imgModel,
                       width: selfieW || 512,
                       height: selfieH || 768,
-                      comfyWorkflow: (imgConnFull as any).comfyuiWorkflow || undefined,
+                      comfyWorkflow: imgConnFull.comfyuiWorkflow || undefined,
                       referenceImage: readAvatarBase64(charRow?.avatarPath as string | null),
                     });
 
