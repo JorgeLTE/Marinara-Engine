@@ -428,6 +428,7 @@ export async function spritesRoutes(app: FastifyInstance) {
               height: targetHeight,
               referenceImage: resolvedRefs[0],
               referenceImages: resolvedRefs.length > 1 ? resolvedRefs : undefined,
+              comfyWorkflow: conn.comfyuiWorkflow || undefined,
             });
 
             let spriteBuffer: Buffer = Buffer.from(imageResult.base64, "base64");
@@ -492,6 +493,7 @@ export async function spritesRoutes(app: FastifyInstance) {
         height: sheetHeight,
         referenceImage: resolvedRefs[0],
         referenceImages: resolvedRefs.length > 1 ? resolvedRefs : undefined,
+        comfyWorkflow: conn.comfyuiWorkflow || undefined,
       });
 
       // Decode the generated image
