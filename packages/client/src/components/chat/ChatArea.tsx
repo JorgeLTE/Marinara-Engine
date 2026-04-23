@@ -48,6 +48,8 @@ import { useEncounterStore } from "../../stores/encounter.store";
 import { APP_VERSION } from "@marinara-engine/shared";
 import { BUILT_IN_AGENTS } from "@marinara-engine/shared";
 import { useTranslationStore } from "../../stores/translation.store";
+import { ttsService } from "../../lib/tts-service";
+import { useTTSConfig } from "../../hooks/use-tts";
 import { mirrorSpritePlacements, normalizeSpritePlacements } from "./sprite-placement";
 import type { CharacterMap, MessageSelectionToggle, MessageWithSwipes, PeekPromptData } from "./chat-area.types";
 import { RecentChats } from "./RecentChats";
@@ -785,6 +787,46 @@ export function ChatArea() {
   // Reset scroll-away flag when streaming ends
   useEffect(() => {
     if (!isStreaming) userScrolledAwayRef.current = false;
+  }, [isStreaming]);
+
+  // TTS autoplay — speak the last assistant message when streaming ends
+  const { data: ttsConfig } = useTTSConfig();
+  const ttsConfigRef = useRef(ttsConfig);
+  ttsConfigRef.current = ttsConfig;
+  const messagesRef = useRef(messages);
+  messagesRef.current = messages;
+  const chatModeRef = useRef(chatMode);
+  chatModeRef.current = chatMode;
+  const prevIsStreamingRef = useRef(false);
+  useEffect(() => {
+    const wasStreaming = prevIsStreamingRef.current;
+    prevIsStreamingRef.current = isStreaming;
+    if (!wasStreaming || isStreaming) return; // only fire on true → false transition
+
+    const cfg = ttsConfigRef.current;
+    if (!cfg?.enabled) return;
+
+    const mode = chatModeRef.current;
+    const shouldAutoplay =
+      mode === "roleplay" || mode === "visual_novel"
+        ? cfg.autoplayRP
+        : mode === "game"
+          ? cfg.autoplayGame
+          : cfg.autoplayConvo;
+    if (!shouldAutoplay) return;
+
+    const msgs = messagesRef.current ?? [];
+    let lastMsg: (typeof msgs)[number] | undefined;
+    for (let index = msgs.length - 1; index >= 0; index -= 1) {
+      const candidate = msgs[index];
+      if (candidate.role === "assistant" || candidate.role === "narrator") {
+        lastMsg = candidate;
+        break;
+      }
+    }
+    if (!lastMsg?.content) return;
+
+    void ttsService.speak(lastMsg.content, lastMsg.id);
   }, [isStreaming]);
 
   const newestMsgId = msgData?.pages[0]?.[msgData.pages[0].length - 1]?.id;

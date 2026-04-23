@@ -3,6 +3,7 @@
 // ──────────────────────────────────────────────
 
 // Types
+export * from "./types/tts.js";
 export * from "./types/chat.js";
 export * from "./types/character.js";
 export * from "./types/lorebook.js";

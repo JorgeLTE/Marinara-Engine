@@ -19,6 +19,9 @@ import {
   Eye,
   Brain,
   Languages,
+  Volume2,
+  VolumeX,
+  Loader2,
 } from "lucide-react";
 import type { Message } from "@marinara-engine/shared";
 import { memo, useState, useMemo, useRef, useEffect, useLayoutEffect, useCallback, type ReactNode } from "react";
@@ -31,6 +34,8 @@ import { useApplyRegex } from "../../hooks/use-apply-regex";
 import { useUIStore } from "../../stores/ui.store";
 import { useTranslate } from "../../hooks/use-translate";
 import { api } from "../../lib/api-client";
+import { ttsService } from "../../lib/tts-service";
+import { useTTSConfig } from "../../hooks/use-tts";
 import { DIALOGUE_QUOTE_PATTERN_SOURCE, HTML_SAFE_DIALOGUE_QUOTE_PATTERN_SOURCE } from "../../lib/dialogue-quotes";
 import DOMPurify from "dompurify";
 import type { MessageSelectionToggle } from "./chat-area.types";
@@ -513,6 +518,33 @@ export const ChatMessage = memo(function ChatMessage({
   const { translate, translations, translating } = useTranslate();
   const translatedText = translations[message.id];
   const isTranslating = !!translating[message.id];
+
+  // TTS
+  const { data: ttsConfig } = useTTSConfig();
+  const ttsEnabled = ttsConfig?.enabled ?? false;
+  const [ttsState, setTTSState] = useState(ttsService.getState());
+  const [ttsActiveId, setTTSActiveId] = useState<string | null>(ttsService.getActiveId());
+  useEffect(() => ttsService.subscribe((state, id) => {
+    setTTSState(state);
+    setTTSActiveId(id);
+  }), []);
+  const ttsBusy = ttsState === "loading" || ttsState === "playing";
+  const isSpeakingThis = ttsActiveId === message.id;
+  const isLoadingThis = isSpeakingThis && ttsState === "loading";
+
+  const handleSpeak = useCallback(() => {
+    // Read directly from the singleton so we never act on stale React state
+    const liveState = ttsService.getState();
+    const liveActiveId = ttsService.getActiveId();
+    const liveBusy = liveState === "loading" || liveState === "playing";
+    const liveIsThis = liveActiveId === message.id;
+    if (liveBusy && !liveIsThis) return;
+    if (liveIsThis) {
+      ttsService.stop();
+    } else {
+      void ttsService.speak(message.content, message.id);
+    }
+  }, [message.content, message.id]);
 
   // Dismiss actions when tapping outside on mobile
   useEffect(() => {
@@ -1326,6 +1358,22 @@ export const ChatMessage = memo(function ChatMessage({
                 className="hover:text-red-400"
                 dark
               />
+              {ttsEnabled && (
+                <ActionBtn
+                  icon={
+                    isLoadingThis
+                      ? <Loader2 size="0.6875rem" className="animate-spin" />
+                      : isSpeakingThis
+                        ? <VolumeX size="0.6875rem" />
+                        : <Volume2 size="0.6875rem" />
+                  }
+                  onClick={handleSpeak}
+                  title={isLoadingThis ? "Loading…" : isSpeakingThis ? "Stop speaking" : "Speak"}
+                  className={isSpeakingThis ? "text-sky-400 hover:text-sky-300" : undefined}
+                  disabled={ttsBusy && !isSpeakingThis}
+                  dark
+                />
+              )}
             </div>
           </div>
         </div>
@@ -1630,6 +1678,21 @@ export const ChatMessage = memo(function ChatMessage({
               title="Delete"
               className="hover:text-[var(--destructive)]"
             />
+            {ttsEnabled && (
+              <ActionBtn
+                icon={
+                  isLoadingThis
+                    ? <Loader2 size="0.625rem" className="animate-spin" />
+                    : isSpeakingThis
+                      ? <VolumeX size="0.625rem" />
+                      : <Volume2 size="0.625rem" />
+                }
+                onClick={handleSpeak}
+                title={isLoadingThis ? "Loading…" : isSpeakingThis ? "Stop speaking" : "Speak"}
+                className={isSpeakingThis ? "text-sky-500" : undefined}
+                disabled={ttsBusy && !isSpeakingThis}
+              />
+            )}
           </div>
         </div>
       </div>
@@ -1701,19 +1764,22 @@ function ActionBtn({
   title,
   className,
   dark,
+  disabled,
 }: {
   icon: React.ReactNode;
   onClick: () => void;
   title: string;
   className?: string;
   dark?: boolean;
+  disabled?: boolean;
 }) {
   return (
     <button
       onClick={onClick}
       title={title}
+      disabled={disabled}
       className={cn(
-        "rounded-md p-1 transition-all active:scale-90",
+        "rounded-md p-1 transition-all active:scale-90 disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-30",
         dark
           ? "text-white/40 hover:bg-white/10 hover:text-white/70"
           : "text-[var(--muted-foreground)] hover:bg-[var(--accent)] hover:text-[var(--foreground)]",

@@ -28,6 +28,7 @@ import {
 } from "lucide-react";
 import { cn } from "../../lib/utils";
 import { toast } from "sonner";
+import { TTSConfigCard } from "./settings/TTSConfigCard";
 
 /** Provider → gradient color pair for connection icons. */
 const PROVIDER_COLORS: Record<string, { from: string; to: string; ring: string; badge: string }> = {
@@ -278,6 +279,9 @@ export function ConnectionsPanel() {
       {/* ── Local Model (Sidecar) ── */}
       {import.meta.env.VITE_MARINARA_LITE !== "true" && <SidecarCard />}
 
+      {/* ── Text to Speech ── */}
+      <TTSConfigCard />
+
       <button
         onClick={() => openModal("create-connection")}
         className="flex items-center justify-center gap-1.5 rounded-xl px-3 py-2.5 text-xs font-medium transition-all active:scale-[0.98] bg-gradient-to-r from-sky-400 to-blue-500 text-white shadow-md shadow-sky-400/15 hover:shadow-lg hover:shadow-sky-400/25"
@@ -442,6 +446,7 @@ export function ConnectionsPanel() {
           Click to edit · Set active connection in Chat Settings
         </p>
       )}
+
     </div>
   );
 }

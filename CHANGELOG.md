@@ -2,6 +2,15 @@
 
 This file is the release-notes source of truth for Marinara Engine. Reuse these entries when publishing GitHub Releases for tags in the `vX.Y.Z` format.
 
+## [1.5.6]
+
+### Added
+
+- Text-to-speech support via any OpenAI-compatible provider. Configure the base URL, API key, model, voice, and speed in the Connections panel. Voices are fetched dynamically from your provider and fall back to the OpenAI built-in list when the endpoint is unavailable.
+- Per-message speak button with loading feedback. While audio is fetching or playing, all other speak buttons are disabled so only one message plays at a time.
+- Autoplay option for Roleplay, Conversation, and Game modes — automatically speaks each assistant message as it finishes generating.
+- TTS settings auto-save as you change them; no manual save step required.
+
 ## [1.5.5]
 
 ### Added
