@@ -1041,13 +1041,27 @@ export async function generateRoutes(app: FastifyInstance) {
 
         // Inject timestamps: today's messages get [HH:MM] per message,
         // older messages are grouped by date inside <date="DD.MM.YYYY"> blocks.
+        // The "day" boundary is shifted by dayRolloverHour so a late-night
+        // session doesn't get split when calendar midnight passes.
         const now = new Date();
-        const todayKey = `${now.getFullYear()}-${now.getMonth()}-${now.getDate()}`;
+        const rolloverHour = Math.max(
+          0,
+          Math.min(23, Math.floor((chatMeta.dayRolloverHour as number | undefined) ?? 4)),
+        );
+        const shifted = (ts: Date) => new Date(ts.getTime() - rolloverHour * 3_600_000);
+        const logicalNow = shifted(now);
+        const todayKey = `${logicalNow.getFullYear()}-${logicalNow.getMonth()}-${logicalNow.getDate()}`;
 
-        const isSameDay = (ts: Date) => `${ts.getFullYear()}-${ts.getMonth()}-${ts.getDate()}` === todayKey;
+        const isSameDay = (ts: Date) => {
+          const d = shifted(ts);
+          return `${d.getFullYear()}-${d.getMonth()}-${d.getDate()}` === todayKey;
+        };
 
-        const fmtDate = (ts: Date) =>
-          `${String(ts.getDate()).padStart(2, "0")}.${String(ts.getMonth() + 1).padStart(2, "0")}.${ts.getFullYear()}`;
+        const fmtDate = (ts: Date) => {
+          const d = shifted(ts);
+          return `${String(d.getDate()).padStart(2, "0")}.${String(d.getMonth() + 1).padStart(2, "0")}.${d.getFullYear()}`;
+        };
+        const todayDateKey = fmtDate(now);
         const fmtTime = (ts: Date) =>
           `${String(ts.getHours()).padStart(2, "0")}:${String(ts.getMinutes()).padStart(2, "0")}`;
 
@@ -1061,10 +1075,13 @@ export async function generateRoutes(app: FastifyInstance) {
         }
 
         // Separate into past-day groups and today's messages, preserving order
-        type BucketMsg = { role: string; content: string; author: string };
+        type BucketMsg = { role: string; content: string; author: string; ts: Date };
         type Bucket = { date: string; msgs: BucketMsg[] };
         const buckets: Array<Bucket | { role: string; content: string }> = [];
         let currentBucket: Bucket | null = null;
+        // Index of today's first verbatim message in the buckets array. Used
+        // to splice the tail block in immediately before today begins.
+        let firstTodayIdx: number | null = null;
 
         for (let i = 0; i < finalMessages.length; i++) {
           const msg = finalMessages[i]!;
@@ -1092,16 +1109,17 @@ export async function generateRoutes(app: FastifyInstance) {
               buckets.push(currentBucket);
               currentBucket = null;
             }
+            if (firstTodayIdx === null) firstTodayIdx = buckets.length;
             buckets.push({ ...msg, content: `[${fmtTime(ts)}] ${stripLeakedTimestamps(msg.content)}` });
           } else {
             const dateKey = fmtDate(ts);
             if (currentBucket && currentBucket.date === dateKey) {
-              currentBucket.msgs.push({ ...msg, content: stripLeakedTimestamps(msg.content), author });
+              currentBucket.msgs.push({ ...msg, content: stripLeakedTimestamps(msg.content), author, ts });
             } else {
               if (currentBucket) buckets.push(currentBucket);
               currentBucket = {
                 date: dateKey,
-                msgs: [{ ...msg, content: stripLeakedTimestamps(msg.content), author }],
+                msgs: [{ ...msg, content: stripLeakedTimestamps(msg.content), author, ts }],
               };
             }
           }
@@ -1137,9 +1155,10 @@ export async function generateRoutes(app: FastifyInstance) {
         for (const b of buckets) {
           if (!("date" in b && "msgs" in b)) continue;
           const bucket = b as Bucket;
-          const bucketDate = parseDateKey(bucket.date);
-          // Skip today and already-summarized days
-          if (isSameDay(bucketDate) || daySummaries[bucket.date]) continue;
+          // Skip today and already-summarized days. bucket.date is already a
+          // logical-day key; compare strings to avoid double-shifting through
+          // parseDateKey + isSameDay.
+          if (bucket.date === todayDateKey || daySummaries[bucket.date]) continue;
           bucketsToSummarize.push(bucket);
         }
 
@@ -1280,7 +1299,9 @@ export async function generateRoutes(app: FastifyInstance) {
           if (weekSummaries[weekKey]) continue; // already consolidated
           const monday = parseDateKey(weekKey);
           const nextMonday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 7);
-          if (now.getTime() >= nextMonday.getTime()) {
+          // Compare against logical-now so the consolidation rolls over with
+          // the same day boundary used for bucketing.
+          if (logicalNow.getTime() >= nextMonday.getTime()) {
             // This week is fully in the past — consolidate
             weeksToConsolidate.push({ weekKey, days });
           }
@@ -1422,24 +1443,77 @@ export async function generateRoutes(app: FastifyInstance) {
           }
         }
 
+        // Tail messages: pull the last N messages from past-summarized buckets
+        // so the model has concrete recent dialogue to continue from, not just
+        // the gist of yesterday's summary. Walks across day boundaries when
+        // earlier buckets are short.
+        const tailCount = Math.max(
+          0,
+          Math.min(50, Math.floor((chatMeta.summaryTailMessages as number | undefined) ?? 10)),
+        );
+        const tailEntries: BucketMsg[] = [];
+        if (tailCount > 0) {
+          outer: for (let bi = buckets.length - 1; bi >= 0; bi--) {
+            const b = buckets[bi]!;
+            if (!("date" in b && "msgs" in b)) continue;
+            const bucket = b as Bucket;
+            // Pull only from summarized past days. Today's messages are already
+            // verbatim, and unsummarized past days will be emitted verbatim too,
+            // so neither needs duplicating into a tail block.
+            if (bucket.date === todayDateKey) continue;
+            if (!daySummaries[bucket.date]) continue;
+            for (let mi = bucket.msgs.length - 1; mi >= 0; mi--) {
+              tailEntries.unshift(bucket.msgs[mi]!);
+              if (tailEntries.length >= tailCount) break outer;
+            }
+          }
+        }
+
         // Flatten: consolidated weeks → single <summary week="..."> block,
         // non-consolidated summarized days → <summary date="..."> block,
-        // today → individual timestamped messages
+        // today → individual timestamped messages.
+        // The tail block is spliced in at firstTodayIdx so it sits between
+        // the last summary and today's first verbatim message.
         const weekBlocksEmitted = new Set<string>();
-        finalMessages = buckets.flatMap((b) => {
+        const fmtTailPrefix = (ts: Date) => {
+          const d = String(ts.getDate()).padStart(2, "0");
+          const mo = String(ts.getMonth() + 1).padStart(2, "0");
+          const h = String(ts.getHours()).padStart(2, "0");
+          const mi = String(ts.getMinutes()).padStart(2, "0");
+          return `[${d}.${mo} ${h}:${mi}]`;
+        };
+        const buildTailTurns = () => {
+          if (tailEntries.length === 0) return [];
+          // Match today's verbatim format: timestamp prefix, no author name.
+          // The [DD.MM HH:MM] prefix unambiguously distinguishes tail turns
+          // from today's [HH:MM] turns, so no wrapper tag is needed — the
+          // model can see from the timestamps alone where today begins.
+          return tailEntries.map((m) => ({
+            role: m.role as "user" | "assistant" | "system",
+            content: `${fmtTailPrefix(m.ts)} ${m.content}`,
+          }));
+        };
+
+        finalMessages = buckets.flatMap((b, bIdx) => {
+          // Splice the tail in immediately before today's first verbatim
+          // message. firstTodayIdx is null when today has no messages yet —
+          // in that case we fall through to the post-loop append below.
+          const prefix = bIdx === firstTodayIdx ? buildTailTurns() : [];
+
           if ("date" in b && "msgs" in b) {
             const bucket = b as Bucket;
             const weekKey = dayToWeek.get(bucket.date);
 
             // Day belongs to a consolidated week → emit one week summary block (first occurrence)
             if (weekKey && weekSummaries[weekKey]) {
-              if (weekBlocksEmitted.has(weekKey)) return []; // already emitted for this week
+              if (weekBlocksEmitted.has(weekKey)) return prefix; // already emitted for this week
               weekBlocksEmitted.add(weekKey);
               const wEntry = weekSummaries[weekKey]!;
               const monday = parseDateKey(weekKey);
               const sunday = new Date(monday.getFullYear(), monday.getMonth(), monday.getDate() + 6);
               // Key details are surfaced separately via <important_memories> in the system prompt.
               return [
+                ...prefix,
                 {
                   role: "system" as const,
                   content: `<summary week="${weekKey} – ${fmtDateKey(sunday)}">\n${wEntry.summary}\n</summary>`,
@@ -1452,22 +1526,31 @@ export async function generateRoutes(app: FastifyInstance) {
             if (entry) {
               // Key details are surfaced separately via <important_memories> in the system prompt.
               return [
+                ...prefix,
                 {
                   role: "system" as const,
                   content: `<summary date="${bucket.date}">\n${entry.summary}\n</summary>`,
                 },
               ];
             }
-            // Unsummarized day (today) — keep each message as its own turn
-            return bucket.msgs.map((m, idx) => {
+            // Unsummarized past day — keep each message as its own turn
+            const turns = bucket.msgs.map((m, idx) => {
               let content = `${m.author}: ${m.content}`;
               if (idx === 0) content = `<date="${bucket.date}">\n${content}`;
               if (idx === bucket.msgs.length - 1) content = `${content}\n</date>`;
               return { role: m.role as "user" | "assistant" | "system", content };
             });
+            return [...prefix, ...turns];
           }
-          return [b as { role: "system" | "user" | "assistant"; content: string }];
+          return [...prefix, b as { role: "system" | "user" | "assistant"; content: string }];
         });
+
+        // Edge case: today has no messages yet (firstTodayIdx is null).
+        // Append the tail at the end so it still bridges into the upcoming
+        // generation rather than being silently dropped.
+        if (firstTodayIdx === null && tailEntries.length > 0) {
+          finalMessages = [...finalMessages, ...buildTailTurns()];
+        }
 
         // Build the system prompt
         // Use custom system prompt if set, otherwise the built-in default

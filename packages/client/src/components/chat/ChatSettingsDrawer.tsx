@@ -21,6 +21,8 @@ import {
   Sparkles,
   Image,
   Pencil,
+  Clock,
+  AlertTriangle,
   GripVertical,
   MessageCircle,
   Bot,
@@ -655,6 +657,14 @@ export function ChatSettingsDrawer({
   const [showConnectionPicker, setShowConnectionPicker] = useState(false);
   const [showSummariesModal, setShowSummariesModal] = useState(false);
   const [showMemoriesModal, setShowMemoriesModal] = useState(false);
+  // Session-ephemeral: did the user change Day Rollover Hour in this drawer mount?
+  // Used to gate the "transitional duplication" warning so it only appears
+  // immediately after a change (when the warning is operationally useful) and
+  // doesn't permanently clutter chats that already have summaries.
+  const [rolloverTouchedThisSession, setRolloverTouchedThisSession] = useState(false);
+  useEffect(() => {
+    setRolloverTouchedThisSession(false);
+  }, [chat.id]);
   const [connectionSearch, setConnectionSearch] = useState("");
   const [personaSearch, setPersonaSearch] = useState("");
   const [pendingToolIds, setPendingToolIds] = useState<string[]>([]);
@@ -3305,18 +3315,95 @@ export function ChatSettingsDrawer({
               icon={<CalendarClock size="0.875rem" />}
               help="To help keep the request context low, the conversation is automatically summarized. Each day is wrapped up into a day summary. Likewise, day summaries are combined into week summaries. Chat messages that have been summarized are not added to context. Only the week summaries, the day summaries of the current week and today's messages are added to the context. This feature currently can't be disabled."
             >
-              <button
-                onClick={() => setShowSummariesModal(true)}
-                className="flex w-full items-center justify-between rounded-lg bg-[var(--secondary)] px-3 py-2.5 text-left transition-all hover:bg-[var(--accent)]"
-              >
-                <div className="flex-1 min-w-0">
-                  <span className="text-[0.6875rem] font-medium">Edit Summaries</span>
+              <div className="space-y-2.5">
+                <button
+                  onClick={() => setShowSummariesModal(true)}
+                  className="flex w-full items-center justify-between rounded-lg bg-[var(--secondary)] px-3 py-2.5 text-left transition-all hover:bg-[var(--accent)]"
+                >
+                  <div className="flex-1 min-w-0">
+                    <span className="text-[0.6875rem] font-medium">Edit Summaries</span>
+                    <p className="text-[0.625rem] text-[var(--muted-foreground)]">
+                      Review and edit what characters remember from this chat.
+                    </p>
+                  </div>
+                  <Pencil size="0.875rem" className="shrink-0 text-[var(--muted-foreground)]" />
+                </button>
+
+                {/* Day rollover hour */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Clock size="0.75rem" className="text-[var(--primary)]" />
+                    <span className="text-xs font-medium">Day Rollover Hour</span>
+                  </div>
+                  <select
+                    value={(metadata.dayRolloverHour as number | undefined) ?? 4}
+                    onChange={(e) => {
+                      setRolloverTouchedThisSession(true);
+                      updateMeta.mutate({ id: chat.id, dayRolloverHour: Number(e.target.value) });
+                    }}
+                    className="w-full rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--primary)]/40"
+                  >
+                    {Array.from({ length: 12 }, (_, h) => {
+                      const label = h === 0 ? "12 AM (midnight)" : `${h} AM`;
+                      return (
+                        <option key={h} value={h}>
+                          {label}
+                        </option>
+                      );
+                    })}
+                  </select>
                   <p className="text-[0.625rem] text-[var(--muted-foreground)]">
-                    Review and edit what characters remember from this chat.
+                    Messages sent before this hour count as part of the previous day. Pick a time you&apos;re
+                    never chatting, so a late-night session doesn&apos;t get cut off mid-conversation.
+                  </p>
+                  {rolloverTouchedThisSession &&
+                    (((metadata.daySummaries as Record<string, unknown> | undefined) &&
+                      Object.keys(metadata.daySummaries as Record<string, unknown>).length > 0) ||
+                      ((metadata.weekSummaries as Record<string, unknown> | undefined) &&
+                        Object.keys(metadata.weekSummaries as Record<string, unknown>).length > 0)) && (
+                    <div className="flex items-start gap-1.5 rounded-md bg-amber-400/10 px-2 py-1.5 ring-1 ring-amber-400/20">
+                      <AlertTriangle
+                        size="0.75rem"
+                        className="mt-[0.125rem] shrink-0 text-amber-400/80"
+                      />
+                      <p className="text-[0.625rem] text-amber-400/80 leading-snug">
+                        Existing summaries were built with the previous setting. For today, messages near the
+                        rollover hour may be duplicated or missing from the prompt. From tomorrow onward, new
+                        day summaries will line up correctly. To adjust an older summary, use{" "}
+                        <span className="font-medium">Edit Summaries</span> above.
+                      </p>
+                    </div>
+                  )}
+                </div>
+
+                {/* Recent message tail */}
+                <div className="space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle size="0.75rem" className="text-[var(--primary)]" />
+                    <span className="text-xs font-medium">Recent Message Tail</span>
+                  </div>
+                  <input
+                    type="number"
+                    min={0}
+                    max={50}
+                    step={1}
+                    value={(metadata.summaryTailMessages as number | undefined) ?? 10}
+                    onChange={(e) => {
+                      const raw = Number(e.target.value);
+                      const clamped = Number.isFinite(raw)
+                        ? Math.max(0, Math.min(50, Math.floor(raw)))
+                        : 10;
+                      updateMeta.mutate({ id: chat.id, summaryTailMessages: clamped });
+                    }}
+                    className="w-full rounded-lg bg-[var(--secondary)] px-3 py-2 text-xs outline-none ring-1 ring-transparent transition-shadow focus:ring-[var(--primary)]/40"
+                  />
+                  <p className="text-[0.625rem] text-[var(--muted-foreground)]">
+                    How many recent messages to keep word-for-word, even once they&apos;re summarized. Helps
+                    characters pick up the actual flow of last night&apos;s conversation instead of just the
+                    gist. Set to <span className="font-medium">0</span> to disable.
                   </p>
                 </div>
-                <Pencil size="0.875rem" className="shrink-0 text-[var(--muted-foreground)]" />
-              </button>
+              </div>
             </Section>
           )}
 
