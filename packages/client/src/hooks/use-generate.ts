@@ -1164,6 +1164,9 @@ export function useGenerate() {
               } else if (actionData.action === "chat_created") {
                 toast(`Started ${actionData.mode} chat with ${actionData.characterName}`, { icon: "💬" });
                 qc.invalidateQueries({ queryKey: ["chats"] });
+              } else if (actionData.action === "data_fetched") {
+                const fetchType = (actionData.fetchType as string) ?? "data";
+                toast(`Fetched ${fetchType}: ${actionData.name}`, { icon: "📋" });
               } else if (actionData.action === "navigate") {
                 const panel = actionData.panel as string;
                 const tab = actionData.tab as string | null;

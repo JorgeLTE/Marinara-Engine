@@ -5512,8 +5512,19 @@ export async function generateRoutes(app: FastifyInstance) {
             reply.raw.write(`data: ${JSON.stringify({ type: "content_replace", data: fullResponse })}\n\n`);
           }
 
-          // Guard: don't save empty responses — the model returned nothing useful
+          // Guard: don't save empty responses — the model returned nothing useful.
+          // Exception: if the model emitted character commands (e.g. [fetch:...]) with
+          // no surrounding prose, treat the commands as the useful output. Skip saving
+          // a blank assistant bubble but still return the commands so they execute.
           if (!fullResponse.trim() && !input.impersonate) {
+            if (parsedCommands.length > 0) {
+              logger.info(
+                "[generate] Model emitted %d command(s) with no visible prose for chat %s; executing commands without saving a message",
+                parsedCommands.length,
+                input.chatId,
+              );
+              return { savedMsg: null, response: "", commands: parsedCommands, oocMessages, characterId: targetCharId };
+            }
             logger.warn(`[generate] Empty response from model for chat ${input.chatId} (char: ${targetCharId})`);
             reply.raw.write(
               `data: ${JSON.stringify({ type: "error", data: "The AI returned an empty response. Try sending your message again." })}\n\n`,
