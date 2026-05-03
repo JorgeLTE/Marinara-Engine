@@ -2301,7 +2301,6 @@ export function GameNarration({
     "flex items-center gap-1.5 rounded-lg bg-[var(--muted)]/30 px-3 py-1.5 text-xs text-[var(--foreground)]/70 transition-colors hover:bg-[var(--muted)]/50 hover:text-[var(--foreground)] dark:bg-white/10 dark:text-white/70 dark:hover:bg-white/20 dark:hover:text-white";
   const NARRATION_META_BTN =
     "flex min-h-7 items-center gap-1 rounded-lg border border-[var(--border)] bg-[var(--muted)]/20 px-2.5 py-1 text-xs text-[var(--foreground)]/75 transition-colors hover:bg-[var(--muted)]/40 dark:border-white/10 dark:bg-white/5 dark:text-white/75 dark:hover:bg-white/10";
-  const NARRATION_ICON_META_BTN = cn(NARRATION_META_BTN, "min-w-7 justify-center px-2");
 
   const handleInterrupt = useCallback(() => {
     // Request only — the parent opens the confirmation modal. We don't pause

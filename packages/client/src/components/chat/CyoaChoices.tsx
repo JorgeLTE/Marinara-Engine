@@ -116,7 +116,7 @@ export function CyoaChoices({ messages }: Props) {
     } finally {
       setIsRerolling(false);
     }
-  }, [activeChatId, isStreaming, isEditing, retryAgents]);
+  }, [activeChatId, isStreaming, isEditing, isRerolling, retryAgents]);
 
   const handleStartEdit = useCallback(() => {
     setDraftChoices(choices.map((choice) => ({ ...choice })));
