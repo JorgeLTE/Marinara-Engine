@@ -83,23 +83,3 @@ export function GameChoiceCards({ choices, onSelect, disabled }: GameChoiceCards
     </div>
   );
 }
-
-// ── Tag Parser ──
-
-/** Parse [choices: "A" | "B" | "C"] from narration content. */
-export function parseChoiceTag(content: string): { choices: string[]; cleanContent: string } | null {
-  const regex = /\[choices:\s*(.+?)\]/i;
-  const match = content.match(regex);
-  if (!match) return null;
-
-  const raw = match[1]!;
-  const choices = raw
-    .split("|")
-    .map((c) => c.trim().replace(/^["']|["']$/g, ""))
-    .filter((c) => c.length > 0);
-
-  if (choices.length === 0) return null;
-
-  const cleanContent = content.replace(regex, "").trim();
-  return { choices, cleanContent };
-}

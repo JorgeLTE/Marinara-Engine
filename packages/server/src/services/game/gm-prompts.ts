@@ -553,7 +553,7 @@ export function buildGmFormatReminder(
     ``,
     `COMMANDS:`,
     `- Emit commands when canonical game or UI state changes; no command is needed for flavor alone.`,
-    `- [choices: "Option A" | "Option B" | "Option C"] - only for explicit player-facing options that require a selection.`,
+    `- [choices: "Option A" | "Option B" | "Option C"] - only for explicit player-facing options that require a selection. Use plain straight quotes around each option (do not escape inner quotes with backslashes).`,
   );
 
   if (ctx.playerDiceRollSubmitted) {
