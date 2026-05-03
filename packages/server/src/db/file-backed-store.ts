@@ -209,6 +209,7 @@ const tableMetasByObject = new WeakMap<object, TableMeta>();
 const columnMetasByObject = new WeakMap<object, ColumnMeta>();
 const tableMetasByName = new Map<string, TableMeta>();
 let skipLibsqlLegacyReader = false;
+let skipNodeSqliteLegacyReader = false;
 
 function symbolValue<T>(target: object, symbolName: string): T | undefined {
   const symbol = Object.getOwnPropertySymbols(target).find((entry) => String(entry) === symbolName);
@@ -642,13 +643,38 @@ async function readLegacyRowsWithLibsql(dbPath: string, table: string) {
   }
 }
 
+async function readLegacyRowsWithNodeSqlite(dbPath: string, table: string) {
+  const { DatabaseSync } = await import("node:sqlite");
+  const database = new DatabaseSync(dbPath, { readOnly: true });
+  try {
+    const exists = database.prepare("SELECT name FROM sqlite_master WHERE type = 'table' AND name = ?").get(table);
+    if (!exists) return [];
+
+    return database.prepare(`SELECT * FROM ${quoteIdentifier(table)}`).all() as Row[];
+  } finally {
+    database.close();
+  }
+}
+
 async function readLegacyRows(dbPath: string, table: string) {
-  if (!skipLibsqlLegacyReader) {
+  if (!skipLibsqlLegacyReader && process.env.MARINARA_DISABLE_LIBSQL_LEGACY_READER !== "true") {
     try {
       return await readLegacyRowsWithLibsql(dbPath, table);
     } catch (libsqlErr) {
       skipLibsqlLegacyReader = true;
-      logger.warn({ err: libsqlErr }, "[file-storage] libSQL unavailable for legacy import; skipping legacy DB");
+      logger.warn({ err: libsqlErr }, "[file-storage] libSQL unavailable for legacy import; falling back");
+    }
+  }
+
+  if (!skipNodeSqliteLegacyReader) {
+    try {
+      return await readLegacyRowsWithNodeSqlite(dbPath, table);
+    } catch (nodeSqliteErr) {
+      skipNodeSqliteLegacyReader = true;
+      logger.warn(
+        { err: nodeSqliteErr },
+        "[file-storage] node:sqlite unavailable for legacy import; skipping legacy DB",
+      );
     }
   }
 

@@ -46,6 +46,18 @@ function withFileStorageDir<T>(dir: string, fn: () => Promise<T>) {
   });
 }
 
+function withEnv<T>(name: string, value: string, fn: () => Promise<T>) {
+  const previous = process.env[name];
+  process.env[name] = value;
+  return fn().finally(() => {
+    if (previous === undefined) {
+      delete process.env[name];
+    } else {
+      process.env[name] = previous;
+    }
+  });
+}
+
 test("file-native import merges chats from every known legacy database source", async () => {
   const root = mkdtempSync(join(tmpdir(), "marinara-file-import-"));
   try {
@@ -68,6 +80,34 @@ test("file-native import merges chats from every known legacy database source", 
         await db._fileStore.close();
       }
     });
+  } finally {
+    rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test("file-native import falls back to node:sqlite when libSQL is unavailable", async () => {
+  const root = mkdtempSync(join(tmpdir(), "marinara-file-node-sqlite-import-"));
+  try {
+    const storageDir = join(root, "storage");
+    const legacyDb = join(root, "legacy.db");
+    await writeLegacyDb(legacyDb, [
+      { id: "node-sqlite-chat", name: "Fallback Chat", updatedAt: "2026-05-02T00:00:00.000Z" },
+    ]);
+
+    await withEnv("MARINARA_DISABLE_LIBSQL_LEGACY_READER", "true", () =>
+      withFileStorageDir(storageDir, async () => {
+        const db = await createFileNativeDB([legacyDb]);
+        try {
+          const rows = await db.select().from(chats);
+          assert.deepEqual(
+            rows.map((row) => row.id),
+            ["node-sqlite-chat"],
+          );
+        } finally {
+          await db._fileStore.close();
+        }
+      }),
+    );
   } finally {
     rmSync(root, { recursive: true, force: true });
   }
