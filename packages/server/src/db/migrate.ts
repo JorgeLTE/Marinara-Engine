@@ -104,9 +104,20 @@ const CREATE_TABLES: string[] = [
     created_at TEXT NOT NULL,
     updated_at TEXT NOT NULL
   )`,
+  `CREATE TABLE IF NOT EXISTS lorebook_folders (
+    id TEXT PRIMARY KEY NOT NULL,
+    lorebook_id TEXT NOT NULL REFERENCES lorebooks(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    enabled TEXT NOT NULL DEFAULT 'true',
+    parent_folder_id TEXT,
+    "order" INTEGER NOT NULL DEFAULT 0,
+    created_at TEXT NOT NULL,
+    updated_at TEXT NOT NULL
+  )`,
   `CREATE TABLE IF NOT EXISTS lorebook_entries (
     id TEXT PRIMARY KEY NOT NULL,
     lorebook_id TEXT NOT NULL REFERENCES lorebooks(id) ON DELETE CASCADE,
+    folder_id TEXT,
     name TEXT NOT NULL,
     content TEXT NOT NULL DEFAULT '',
     description TEXT NOT NULL DEFAULT '',
@@ -558,6 +569,11 @@ const COLUMN_MIGRATIONS: ColumnMigration[] = [
     table: "lorebook_entries",
     column: "description",
     definition: "TEXT NOT NULL DEFAULT ''",
+  },
+  {
+    table: "lorebook_entries",
+    column: "folder_id",
+    definition: "TEXT",
   },
 ];
 
